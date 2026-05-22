@@ -66,9 +66,9 @@ export function PanelCandidates() {
         <h1 className="text-2xl font-bold text-secondary mb-1">
           Panel Candidates
         </h1>
-        <p className="text-xs text-secondary/70">
+        {/* <p className="text-xs text-secondary/70">
           Select a panel, then drill into a category to view assigned candidates
-        </p>
+        </p> */}
       </motion.div>
 
       {/* Panel Group selector */}

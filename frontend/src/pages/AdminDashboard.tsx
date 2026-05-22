@@ -73,9 +73,9 @@ export function AdminDashboard() {
         <h1 className="text-xl font-semibold text-secondary mb-1">
           Admin Control Center
         </h1>
-        <p className="text-xs text-secondary/70">
+        {/* <p className="text-xs text-secondary/70">
           Manage your entire recruitment pipeline
-        </p>
+        </p> */}
       </motion.div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-5">

@@ -118,8 +118,8 @@ export const mockPanels: PanelCategory[] = [
 {
   id: 'panel-a-hr',
   panelGroupId: 'group-1',
-  name: 'HR',
-  type: 'HR',
+  name: 'Panel A',
+  type: 'Panel A',
   members: [
   { name: 'Sarah Johnson', role: 'HR Lead' },
   { name: 'Mike Chen', role: 'HR Specialist' },
@@ -134,8 +134,8 @@ export const mockPanels: PanelCategory[] = [
 {
   id: 'panel-a-tech',
   panelGroupId: 'group-1',
-  name: 'Technical',
-  type: 'Technical',
+  name: 'Panel B',
+  type: 'Panel B',
   members: [
   { name: 'Alex Kumar', role: 'Tech Lead' },
   { name: 'Emily Rodriguez', role: 'Senior Engineer' },
@@ -150,8 +150,8 @@ export const mockPanels: PanelCategory[] = [
 {
   id: 'panel-a-p1',
   panelGroupId: 'group-1',
-  name: 'P1',
-  type: 'P1',
+  name: 'Panel C',
+  type: 'Panel C',
   members: [
   { name: 'David Lee', role: 'Principal Engineer' },
   { name: 'Jessica Park', role: 'Senior Engineer' },
@@ -166,8 +166,8 @@ export const mockPanels: PanelCategory[] = [
 {
   id: 'panel-a-p2',
   panelGroupId: 'group-1',
-  name: 'P2',
-  type: 'P2',
+  name: 'Panel D',
+  type: 'Panel D',
   members: [
   { name: 'Robert Taylor', role: 'Senior Engineer' },
   { name: 'Amanda White', role: 'Product Manager' },
@@ -182,8 +182,8 @@ export const mockPanels: PanelCategory[] = [
 {
   id: 'panel-a-p3',
   panelGroupId: 'group-1',
-  name: 'P3',
-  type: 'P3',
+  name: 'Panel E',
+  type: 'Panel E',
   members: [
   { name: 'Linda Wang', role: 'Engineering Manager' },
   { name: 'James Brown', role: 'Senior Engineer' },
@@ -199,8 +199,8 @@ export const mockPanels: PanelCategory[] = [
 {
   id: 'panel-b-hr',
   panelGroupId: 'group-2',
-  name: 'HR',
-  type: 'HR',
+  name: 'Panel F',
+  type: 'Panel F',
   members: [
   { name: 'Priya Nair', role: 'HR Lead' },
   { name: 'Carlos Garcia', role: 'HR Specialist' },
@@ -215,8 +215,8 @@ export const mockPanels: PanelCategory[] = [
 {
   id: 'panel-b-tech',
   panelGroupId: 'group-2',
-  name: 'Technical',
-  type: 'Technical',
+  name: 'Panel G',
+  type: 'Panel G',
   members: [
   { name: 'Tom Wilson', role: 'Tech Lead' },
   { name: 'Nina Patel', role: 'Senior Engineer' },

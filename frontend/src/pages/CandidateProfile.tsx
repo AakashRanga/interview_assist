@@ -193,7 +193,7 @@ export function CandidateProfile() {
           Complete Your Profile
         </h1>
         <p className="text-sm text-secondary/70">
-          Fill in your details and upload documents to auto-schedule your
+          Fill in your details and upload documents to schedule your
           interview
         </p>
       </motion.div>
@@ -889,7 +889,7 @@ export function CandidateProfile() {
               Save Draft
             </Button>
             <Button size="lg" onClick={handleSubmit}>
-              Submit & Auto-Schedule Interview
+              Submit
             </Button>
           </motion.div>
         </div>
