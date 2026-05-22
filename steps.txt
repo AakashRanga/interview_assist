@@ -1,0 +1,15 @@
+Install n8n:
+------------
+1. node -v
+2. npm -v
+=> npm install -g n8n
+
+Start n8n:
+----------
+=> n8n
+
+It starts at:
+http://localhost:5678
+
+Fetch Gmeet API:
+https://chatgpt.com/s/t_6a0aadfda1408191b5c23358ea385334

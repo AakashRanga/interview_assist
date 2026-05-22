@@ -1,0 +1,12 @@
+
+# inside backend folder:
+venv/
+.env/
+# frontend files
+node_modules/
+
+
+n8n Google Meet Integration API.json
+
+__pycache__/
+*.pyc
