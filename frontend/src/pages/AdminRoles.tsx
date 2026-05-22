@@ -75,10 +75,10 @@ export function AdminRoles() {
         className="mb-6">
         
         <h1 className="text-2xl font-bold text-secondary mb-1">Job Roles</h1>
-        <p className="text-xs text-secondary/70">
+        {/* <p className="text-xs text-secondary/70">
           Create and manage open roles. Candidates see these on their dashboard
           when applying.
-        </p>
+        </p> */}
       </motion.div>
 
       {/* Create form */}

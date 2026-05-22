@@ -99,10 +99,10 @@ export function AdminSettings() {
         }}
         className="mb-5">
         
-        <h1 className="text-xl font-semibold text-secondary mb-1">Settings</h1>
+        {/* <h1 className="text-xl font-semibold text-secondary mb-1">Settings</h1>
         <p className="text-xs text-secondary/70">
           Manage your account and platform preferences
-        </p>
+        </p> */}
       </motion.div>
 
       <div className="grid lg:grid-cols-4 gap-4 sm:gap-5">

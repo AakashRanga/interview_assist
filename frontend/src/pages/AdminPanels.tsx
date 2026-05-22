@@ -444,10 +444,10 @@ export function AdminPanels() {
           <h1 className="text-2xl font-bold text-secondary mb-1">
             Panel Management
           </h1>
-          <p className="text-xs text-secondary/70">
+          {/* <p className="text-xs text-secondary/70">
             Each interview is conducted by a 4-member panel committee, assigned
             automatically. Manage members below.
-          </p>
+          </p> */}
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <input

@@ -62,10 +62,10 @@ export function AdminAnalytics() {
         }}
         className="mb-6">
         
-        <h1 className="text-2xl font-bold text-secondary mb-1">Analytics</h1>
+        {/* <h1 className="text-2xl font-bold text-secondary mb-1">Analytics</h1>
         <p className="text-xs text-secondary/70">
           Real-time insights into your recruitment pipeline
-        </p>
+        </p> */}
       </motion.div>
 
       {/* Hero: Total Schedules */}

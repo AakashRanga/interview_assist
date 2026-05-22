@@ -80,9 +80,9 @@ export function AdminCandidates() {
         <h1 className="text-2xl font-bold text-secondary mb-1">
           Candidate Management
         </h1>
-        <p className="text-xs text-secondary/70">
+        {/* <p className="text-xs text-secondary/70">
           Manage all candidates across the recruitment pipeline
-        </p>
+        </p> */}
       </motion.div>
 
       {/* Summary stats */}
