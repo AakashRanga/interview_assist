@@ -15,13 +15,23 @@ import {
 'lucide-react';
 export function CandidateDashboard() {
   const profileCompletion = 85;
-  const assignedCategory = mockPanels.find((p) => p.type === 'Technical')!;
-  const meetLink = assignedCategory.meetLink;
+  const assignedCategory = mockPanels.find((p) => p.type === 'Technical') ?? mockPanels[0];
+  const meetLink = assignedCategory?.meetLink ?? '';
+
   const handleJoinInterview = () => {
+    if (!meetLink) {
+      toast.error('No meeting link available');
+      return;
+    }
     toast.success('Opening Google Meet...');
     window.open(meetLink, '_blank', 'noopener,noreferrer');
   };
+
   const handleCopyLink = () => {
+    if (!meetLink) {
+      toast.error('No meeting link to copy');
+      return;
+    }
     navigator.clipboard.writeText(meetLink);
     toast.success('Link copied');
   };
@@ -132,7 +142,7 @@ export function CandidateDashboard() {
                 </div>
                 <div className="flex items-center justify-between gap-2">
                   <code className="text-[11px] text-primary font-mono truncate">
-                    {meetLink}
+                    {meetLink || 'No link available'}
                   </code>
                   <Button size="sm" variant="outline" onClick={handleCopyLink}>
                     Copy
