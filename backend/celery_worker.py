@@ -23,6 +23,7 @@ from app.models.interview_schedule import InterviewSchedule
 # Import tasks to register them with Celery
 from app.workers import tasks
 
+#resume processing tasks will go to resume_queue
 celery.conf.task_routes = {
     "workers.tasks.*": {"queue": "resume_queue"}
 }

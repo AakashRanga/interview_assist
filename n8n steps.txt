@@ -1,7 +1,18 @@
+WORKFLOW STRUCTURE:
+-------------------
+
+    Webhook
+    ↓
+    Technical Interview (Google Calendar)
+    ↓
+    Edit Fields
+    ↓
+    Respond to Webhook
+
 Nodes Parameters
 ----------------
 
-WEBHOOK SETTINGS:
+1. WEBHOOK SETTINGS:
 
 | Setting        | Value                         |
 | -------------- | ----------------------------- |
@@ -11,20 +22,70 @@ WEBHOOK SETTINGS:
 | Respond        | Using Respond to Webhook Node |
 | Pinned Data    | REMOVE                        |
 
-TECHNICAL INTERVIEW:
+2. TECHNICAL INTERVIEW:
+Node Type:-
+Google Calendar
 
-| Field                   | Value                                                   |
-| ----------------------- | ------------------------------------------------------- |
-| Summary                 | `Technical Interview - {{ $json.body.candidate_name }}` |
-| Description             | `Job Role: {{ $json.body.job_role }}`                   |
-| Attendee                | `{{ $json.body.email }}`                                |
-| Conference Data         | Google Meet                                             |
-| Conference Data Version | 1                                                       |
-| Start                   | `{{ $json.body.start_time }}`                           |
-| End                     | `{{ $json.body.end_time }}`                             |
+Resource:-
+Field	    Value
+Resource	Event
+Operation	Create
 
-RESPOND TO WEBHOOK:
+Calendar
+
+Choose:
+Primary Calendar
+OR 
+your Gmail calendar.
+
+| Field       | Value                                                 |
+| ----------- | ----------------------------------------------------- |
+| Summary     | `Technical Interview - {{$json.body.candidate_name}}` |
+| Description | `Job Role: {{$json.body.job_role}}`                   |
+| Attendees   | `{{$json.body.email}}`                                |
+| Start       | `{{$json.body.date}}T{{$json.body.start_time}}`       |
+| End         | `{{$json.body.date}}T{{$json.body.end_time}}`         |
+
+Conference Data
+Additional Fields
+Enable:
+Field	                 Value
+------------------------------------
+Conference Data	         Google Meet
+Conference Data Version  1
+
+3. EDIT FIELDS NODE:
+Node Type
+Edit Fields
+
+Parameters
+Setting	  Value
+Mode	  Manual Mapping
+
+Include Other Input Fields	OFF
+
+Fields To Set
+Name	     Value
+hangoutLink	 {{$json.hangoutLink}}
+
+4. RESPOND TO WEBHOOK:
 
 | Field            | Value          |                                       |
 | ---------------- | -------------  |
 |Respond With First| Incoming Item |
+
+Notes-Next good improvements you can build:
+
+Email sending after Meet generation
+Auto reminder notifications
+Panel member assignment
+Retry queue for failed interviews
+Slot conflict prevention
+Interview status tracking
+AI interviewer integration
+Resume scoring before scheduling
+Multiple queues (resume_queue, interview_queue, email_queue)
+Docker deployment
+Production Redis + Celery monitoring with Flower
+
+You now have a strong backend orchestration foundation for your AI Recruitment platform.
