@@ -1,0 +1,30 @@
+Nodes Parameters
+----------------
+
+WEBHOOK SETTINGS:
+
+| Setting        | Value                         |
+| -------------- | ----------------------------- |
+| Method         | POST                          |
+| Path           | schedule-interview            |
+| Authentication | None                          |
+| Respond        | Using Respond to Webhook Node |
+| Pinned Data    | REMOVE                        |
+
+TECHNICAL INTERVIEW:
+
+| Field                   | Value                                                   |
+| ----------------------- | ------------------------------------------------------- |
+| Summary                 | `Technical Interview - {{ $json.body.candidate_name }}` |
+| Description             | `Job Role: {{ $json.body.job_role }}`                   |
+| Attendee                | `{{ $json.body.email }}`                                |
+| Conference Data         | Google Meet                                             |
+| Conference Data Version | 1                                                       |
+| Start                   | `{{ $json.body.start_time }}`                           |
+| End                     | `{{ $json.body.end_time }}`                             |
+
+RESPOND TO WEBHOOK:
+
+| Field            | Value          |                                       |
+| ---------------- | -------------  |
+|Respond With First| Incoming Item |

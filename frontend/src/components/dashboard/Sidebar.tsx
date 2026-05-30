@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboardIcon,
   UserIcon,
@@ -33,9 +33,17 @@ export function Sidebar({
   mobileOpen,
   onMobileClose
 }: SidebarProps) {
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    localStorage.removeItem('user');
+    localStorage.removeItem('role');
+    navigate('/login');
+  };
+
   const candidateLinks = [
   {
-    to: '/candidate',
+    to: '/candidate/dashboard',
     icon: LayoutDashboardIcon,
     label: 'Dashboard'
   },
@@ -52,7 +60,7 @@ export function Sidebar({
 
   const panelLinks = [
   {
-    to: '/panel',
+    to: '/panel/dashboard',
     icon: LayoutDashboardIcon,
     label: 'Dashboard'
   },
@@ -74,7 +82,7 @@ export function Sidebar({
 
   const adminLinks = [
   {
-    to: '/admin',
+    to: '/admin/dashboard',
     icon: LayoutDashboardIcon,
     label: 'Dashboard'
   },
@@ -227,11 +235,7 @@ export function Sidebar({
               <NavLink
                 key={link.to}
                 to={link.to}
-                end={
-                link.to === '/candidate' ||
-                link.to === '/panel' ||
-                link.to === '/admin'
-                }
+                end={link.to.includes('/dashboard')}
                 onClick={handleLinkClick}
                 className={({ isActive }) =>
                 `flex items-center ${effectiveCollapsed ? 'justify-center' : 'gap-3'} px-3 py-2.5 rounded-xl transition-all ${isActive ? 'bg-primary/10 text-primary' : 'text-secondary/70 hover:bg-white/60 hover:text-secondary'}`
@@ -269,7 +273,10 @@ export function Sidebar({
 
               <NavLink
               to="/login"
-              onClick={handleLinkClick}
+              onClick={() => {
+                handleLogout();
+                handleLinkClick();
+              }}
               className={`flex items-center ${effectiveCollapsed ? 'justify-center' : 'gap-3'} px-3 py-2.5 rounded-xl text-secondary/70 hover:bg-white/60 hover:text-secondary transition-all`}>
               
                 <LogOutIcon className="w-[18px] h-[18px] flex-shrink-0" />

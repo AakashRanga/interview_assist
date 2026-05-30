@@ -1,56 +1,72 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { AnimatedBackground } from '../components/ui/AnimatedBackground';
 import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
 import { toast } from 'sonner';
-import { CopyIcon, LockIcon } from 'lucide-react';
-const CREDENTIALS = [
-{
-  role: 'Candidate',
-  email: 'candidate@inteviu.com',
-  password: 'candidate123',
-  redirect: '/candidate'
-},
-{
-  role: 'Panel Member',
-  email: 'panel@inteviu.com',
-  password: 'panel123',
-  redirect: '/panel'
-},
-{
-  role: 'Admin',
-  email: 'admin@inteviu.com',
-  password: 'admin123',
-  redirect: '/admin'
-}];
+import { LockIcon, UserIcon, BriefcaseIcon, SettingsIcon } from 'lucide-react';
+import { API_BASE_URL } from '../config';
 
 export function Login() {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const handleLogin = (e: React.FormEvent) => {
+  const [loading, setLoading] = useState(false);
+
+  const getRoleDashboard = (role: string): string => {
+    const dashboards: Record<string, string> = {
+      'candidate': '/candidate/dashboard',
+      'panel': '/panel/dashboard',
+      'admin': '/admin/dashboard'
+    };
+    return dashboards[role] || '/';
+  };
+
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    
     if (!email || !password) {
       toast.error('Please fill in all fields');
       return;
     }
-    const match = CREDENTIALS.find(
-      (c) => c.email === email && c.password === password
-    );
-    if (match) {
-      toast.success(`Welcome, ${match.role}!`);
-      setTimeout(() => navigate(match.redirect), 400);
-    } else {
-      toast.error('Invalid credentials');
+
+    setLoading(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email,
+          password
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        toast.error(data.detail || 'Login failed');
+        return;
+      }
+
+      if (data.user) {
+        toast.success(`Welcome, ${data.user.full_name}!`);
+        localStorage.setItem('user', JSON.stringify(data.user));
+        localStorage.setItem('role', data.user.role);
+        
+        const dashboard = getRoleDashboard(data.user.role);
+        setTimeout(() => navigate(dashboard), 400);
+      }
+    } catch (error) {
+      console.error('Login error:', error);
+      toast.error('Failed to connect to server. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
-  const fillCreds = (cred: (typeof CREDENTIALS)[number]) => {
-    setEmail(cred.email);
-    setPassword(cred.password);
-    toast.info(`Filled ${cred.role} credentials`);
-  };
+
   return (
     <div className="relative min-h-screen flex items-center justify-center px-4 py-8">
       <AnimatedBackground />
@@ -75,7 +91,7 @@ export function Login() {
               Welcome Back
             </h1>
             <p className="text-xs text-secondary/60">
-              Sign in to continue
+              Sign in to your account
             </p>
           </div>
 
@@ -85,7 +101,8 @@ export function Login() {
               label="Email"
               placeholder="you@example.com"
               value={email}
-              onChange={(e) => setEmail(e.target.value)} />
+              onChange={(e) => setEmail(e.target.value)}
+              disabled={loading} />
             
 
             <Input
@@ -93,12 +110,13 @@ export function Login() {
               label="Password"
               placeholder="••••••••"
               value={password}
-              onChange={(e) => setPassword(e.target.value)} />
+              onChange={(e) => setPassword(e.target.value)}
+              disabled={loading} />
             
 
             <div className="flex items-center justify-between text-xs">
               <label className="flex items-center text-secondary/70">
-                <input type="checkbox" className="mr-1.5 rounded" />
+                <input type="checkbox" className="mr-1.5 rounded" disabled={loading} />
                 Remember me
               </label>
               <a
@@ -109,39 +127,20 @@ export function Login() {
               </a>
             </div>
 
-            <Button type="submit" size="lg" className="w-full">
-              Sign In
+            <Button type="submit" size="lg" className="w-full" disabled={loading}>
+              {loading ? 'Signing in...' : 'Sign In'}
             </Button>
           </form>
 
-          {/* Static demo credentials */}
-          <div className="mt-6 pt-5 border-t border-white/60">
-            <div className="text-[10px] font-semibold text-secondary/60 uppercase tracking-wider mb-2.5">
-              Demo Credentials
-            </div>
-            <div className="space-y-1.5">
-              {CREDENTIALS.map((cred) =>
-              <button
-                key={cred.role}
-                type="button"
-                onClick={() => fillCreds(cred)}
-                className="w-full flex items-center justify-between p-2 bg-white/50 hover:bg-white/80 rounded-lg transition-colors text-left group">
-                
-                  <div className="min-w-0">
-                    <div className="text-[11px] font-medium text-secondary">
-                      {cred.role}
-                    </div>
-                    <div className="text-[10px] text-secondary/60 font-mono truncate">
-                      {cred.email}
-                    </div>
-                  </div>
-                  <CopyIcon className="w-3 h-3 text-secondary/40 group-hover:text-primary transition-colors flex-shrink-0 ml-2" />
-                </button>
-              )}
-            </div>
+          <div className="mt-4 text-center text-xs text-secondary/70">
+            Don't have an account?{' '}
+            <Link to="/signup" className="text-primary hover:text-primary/80 font-medium">
+              Sign up here
+            </Link>
           </div>
+
+         
         </div>
       </motion.div>
     </div>);
-
 }

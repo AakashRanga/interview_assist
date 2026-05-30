@@ -1,0 +1,37 @@
+from sqlalchemy import Column, Integer, String, Text, ForeignKey, DateTime
+from sqlalchemy.orm import relationship
+from datetime import datetime
+from app.database import Base
+
+
+class Candidate(Base):
+    __tablename__ = "candidates"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, unique=True, index=True)
+    full_name = Column(String(255), nullable=False)
+    email = Column(String(255), nullable=False)
+    phone = Column(String(50), nullable=True)
+    location = Column(String(255), nullable=True)
+    status = Column(String(100), nullable=False, default="new")
+    resume_path = Column(String(500), nullable=True)
+    skills = Column(String(1000), nullable=True)
+    certificates = Column(String(1000), nullable=True)
+    degree = Column(String(255), nullable=True)
+    university = Column(String(255), nullable=True)
+    graduation_year = Column(String(20), nullable=True)
+    gpa = Column(String(20), nullable=True)
+    current_role = Column(String(255), nullable=True)
+    company = Column(String(255), nullable=True)
+    years_experience = Column(String(50), nullable=True)
+    experience_summary = Column(Text, nullable=True)
+    portfolio_link = Column(String(500), nullable=True)
+    linkedin = Column(String(500), nullable=True)
+    github = Column(String(500), nullable=True)
+    preferred_location = Column(String(255), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    user = relationship("User", back_populates="candidate")
+    applications = relationship("CandidateApplication", back_populates="candidate")
+    interview_schedules = relationship("InterviewSchedule", back_populates="candidate")

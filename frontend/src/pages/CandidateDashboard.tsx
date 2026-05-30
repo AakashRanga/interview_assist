@@ -14,6 +14,24 @@ import {
   VideoIcon } from
 'lucide-react';
 export function CandidateDashboard() {
+  const [fullName, setFullName] = React.useState('John Doe');
+  const [firstName, setFirstName] = React.useState('John');
+
+  React.useEffect(() => {
+    const userStr = localStorage.getItem('user');
+    if (userStr) {
+      try {
+        const u = JSON.parse(userStr);
+        if (u && u.full_name) {
+          setFullName(u.full_name);
+          setFirstName(u.full_name.split(' ')[0]);
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
+  }, []);
+
   const profileCompletion = 85;
   const assignedCategory = mockPanels.find((p) => p.type === 'Technical') ?? mockPanels[0];
   const meetLink = assignedCategory?.meetLink ?? '';
@@ -36,7 +54,7 @@ export function CandidateDashboard() {
     toast.success('Link copied');
   };
   return (
-    <DashboardLayout role="candidate" title="Dashboard" userName="John Doe">
+    <DashboardLayout role="candidate" title="Dashboard" userName={fullName}>
       {/* Welcome */}
       <motion.div
         initial={{
@@ -52,7 +70,7 @@ export function CandidateDashboard() {
         <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
           <div>
             <h1 className="text-xl font-semibold text-secondary mb-1">
-              Welcome back, John
+              Welcome back, {firstName}
             </h1>
             
           </div>

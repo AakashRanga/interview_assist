@@ -11,5 +11,84 @@ Start n8n:
 It starts at:
 http://localhost:5678
 
+email - akashranga27@gmail.com
+pass - Sunshine247
+
 Fetch Gmeet API:
 https://chatgpt.com/s/t_6a0aadfda1408191b5c23358ea385334
+
+backend/
+│
+├── app/
+│   ├── main.py
+│   ├── config.py
+│   ├── database.py
+│   ├── models/
+│   ├── routes/
+│   ├── services/
+│   ├── workers/
+│   ├── utils/
+│  
+│-- uploads/
+├── celery_worker.py
+├── requirements.txt
+├── .env
+└── README.md
+
+Install Linux WSL [Windows Subsystem for Linux]
+ => Open PowerShell or Command Prompt as an Administrator
+ => wsl --install
+
+
+start redis 
+clare@clarencepraison:/mnt/c/Windows/System32$ => sudo service redis-server start
+-------------------------------------------------------------
+clare@clarencepraison:/mnt/c/Windows/System32$ => redis-cli ping
+-------------------------------------------------------------
+
+start celery 
+=> celery -A celery_worker.celery worker --loglevel=info
+
+[or]
+
+=> celery -A celery_worker.celery worker --loglevel=info -P solo
+
+Here's the Celery flow:
+
+  Files Used
+
+  ┌─────────────────────────────────────────────────────────────────┐
+  │  1. celery_worker.py  (entry point)                              │
+  │     - Creates Celery app with Redis broker                       │
+  │     - Imports all models (fixes SQLAlchemy relationships)        │
+  │     - Imports tasks to register them                             │
+  └─────────────────────────────────────────────────────────────────┘
+                                ↓
+  ┌─────────────────────────────────────────────────────────────────┐
+  │  2. app/workers/tasks.py  (the tasks)                           │
+  │     - schedule_interview_task:                                   │
+  │       1. Gets candidate from DB                                  │
+  │       2. Calls n8n webhook                                        │
+  │       3. Updates interview_schedule table with gmeet_link       │
+  └─────────────────────────────────────────────────────────────────┘
+                                ↓
+  ┌─────────────────────────────────────────────────────────────────┐
+  │  3. app/routes/admin_routes.py  (FastAPI endpoint)              │
+  │     - /admin/schedule-interview                                 │
+  │     - Validates candidate                                        │
+  │     - Finds available slot                                       │
+  │     - Creates schedule record (status=pending)                   │
+  │     - Calls schedule_interview_task.delay() ← queues to Redis   │
+  └─────────────────────────────────────────────────────────────────┘
+                                ↓
+  ┌─────────────────────────────────────────────────────────────────┐
+  │  Redis (message broker)                                         │
+  │     - Stores task messages                                       │
+  └─────────────────────────────────────────────────────────────────┘
+                                ↓
+  ┌─────────────────────────────────────────────────────────────────┐
+  │  Celery Worker (running separately)                             │
+  │     - Picks up task from Redis                                   │
+  │     - Executes schedule_interview_task                          │
+  │     - Updates DB with meet link                                  │
+  └─────────────────────────────────────────────────────────────────┘

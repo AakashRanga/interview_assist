@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { DashboardLayout } from '../components/dashboard/DashboardLayout';
@@ -21,74 +21,45 @@ import {
   ClockIcon,
   UsersIcon } from
 'lucide-react';
-import { seedJobRoles } from '../data/jobRoles';
+import { API_BASE_URL } from '../config';
+
 interface UploadedFile {
   name: string;
   size: string;
+  file?: File;
+  path?: string;
 }
+
 export function CandidateProfile() {
+  const [userId, setUserId] = useState<number | null>(null);
+  const [jobRoles, setJobRoles] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
   const [personalInfo, setPersonalInfo] = useState({
-    fullName: 'John Doe',
-    email: 'john.doe@example.com',
-    phone: '+1 (555) 123-4567',
-    location: 'San Francisco, CA'
+    fullName: '',
+    email: '',
+    phone: '',
+    location: ''
   });
   const [education, setEducation] = useState({
-    degree: 'Bachelor of Computer Science',
-    university: 'Stanford University',
-    graduationYear: '2022',
-    gpa: '3.8'
+    degree: '',
+    university: '',
+    graduationYear: '',
+    gpa: ''
   });
   const [experience, setExperience] = useState({
-    currentRole: 'Frontend Developer',
-    company: 'Tech Corp',
-    years: '3',
+    currentRole: '',
+    company: '',
+    years: '',
     summary: ''
   });
-  const [skills, setSkills] = useState<string[]>([
-  'React',
-  'TypeScript',
-  'Node.js']
-  );
+  const [skills, setSkills] = useState<string[]>([]);
   const [skillInput, setSkillInput] = useState('');
   const [preferences, setPreferences] = useState({
     role: '',
     location: ''
   });
   const [appliedRoleIds, setAppliedRoleIds] = useState<Set<string>>(new Set());
-  const selectedRole = seedJobRoles.find((r) => r.id === preferences.role);
-  const handleApply = () => {
-    if (!selectedRole) {
-      toast.error('Please select a role first');
-      return;
-    }
-    if (appliedRoleIds.has(selectedRole.id)) {
-      toast.info(`You've already applied to ${selectedRole.title}`);
-      return;
-    }
-    setAppliedRoleIds((prev) => new Set(prev).add(selectedRole.id));
-    toast.success(`Applied to ${selectedRole.title}`);
-  };
-  const indiaLocationOptions = [
-  'Bengaluru, Karnataka',
-  'Hyderabad, Telangana',
-  'Chennai, Tamil Nadu',
-  'Mumbai, Maharashtra',
-  'Pune, Maharashtra',
-  'Delhi NCR',
-  'Gurugram, Haryana',
-  'Noida, Uttar Pradesh',
-  'Kolkata, West Bengal',
-  'Ahmedabad, Gujarat',
-  'Kochi, Kerala',
-  'Thiruvananthapuram, Kerala',
-  'Coimbatore, Tamil Nadu',
-  'Jaipur, Rajasthan',
-  'Indore, Madhya Pradesh',
-  'Bhubaneswar, Odisha',
-  'Chandigarh',
-  'Visakhapatnam, Andhra Pradesh',
-  'Remote (India)'];
 
   const [links, setLinks] = useState({
     portfolio: '',
@@ -99,45 +70,368 @@ export function CandidateProfile() {
   const [certificates, setCertificates] = useState<UploadedFile[]>([]);
   const resumeInputRef = useRef<HTMLInputElement>(null);
   const certInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const userStr = localStorage.getItem('user');
+    if (userStr) {
+      try {
+        const u = JSON.parse(userStr);
+        if (u && u.id) {
+          setUserId(u.id);
+          fetchProfile(u.id);
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    } else {
+      toast.error('Please log in first');
+      setLoading(false);
+    }
+  }, []);
+
+  const fetchProfile = async (id: number) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/candidate/user/${id}/profile`);
+      if (!res.ok) {
+        toast.error('Failed to load profile details');
+        return;
+      }
+      const data = await res.json();
+      
+      setPersonalInfo({
+        fullName: data.full_name || '',
+        email: data.email || '',
+        phone: data.phone || '',
+        location: data.location || ''
+      });
+      
+      if (data.education) {
+        setEducation({
+          degree: data.education.degree || '',
+          university: data.education.university || '',
+          graduationYear: data.education.graduation_year || '',
+          gpa: data.education.gpa || ''
+        });
+      }
+      
+      if (data.experience) {
+        setExperience({
+          currentRole: data.experience.current_role || '',
+          company: data.experience.company || '',
+          years: data.experience.years_experience || '',
+          summary: data.experience.summary || ''
+        });
+      }
+      
+      if (data.skills) {
+        setSkills(data.skills);
+      }
+      
+      if (data.links) {
+        setLinks({
+          portfolio: data.links.portfolio || '',
+          linkedin: data.links.linkedin || '',
+          github: data.links.github || ''
+        });
+      }
+      
+      if (data.documents) {
+        if (data.documents.resume_path) {
+          setResume({
+            name: data.documents.resume_path.split('/').pop() || data.documents.resume_path,
+            size: 'Existing File',
+            path: data.documents.resume_path
+          });
+        }
+        if (data.documents.certificates && data.documents.certificates.length > 0) {
+          setCertificates(data.documents.certificates.map((c: string) => ({
+            name: c.split('/').pop() || c,
+            size: 'Existing File',
+            path: c
+          })));
+        }
+      }
+      
+      if (data.applications) {
+        const ids = new Set<string>();
+        data.applications.forEach((app: any) => ids.add(String(app.role_id)));
+        setAppliedRoleIds(ids);
+      }
+      
+      if (data.open_roles) {
+        setJobRoles(data.open_roles);
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error('Error fetching candidate profile from server');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const selectedRole = jobRoles.find((r) => String(r.id) === String(preferences.role));
+
+  const handleApply = async () => {
+    if (!selectedRole) {
+      toast.error('Please select a role first');
+      return;
+    }
+    if (appliedRoleIds.size > 0) {
+      toast.error('You can only apply to one job role at a time.');
+      return;
+    }
+    if (!userId) {
+      toast.error('User session not found. Please log in.');
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/candidate/user/${userId}/apply`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          role_id: selectedRole.id,
+          preferred_location: preferences.location || null,
+          cover_letter: `Applying for ${selectedRole.title}`
+        })
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        toast.error(data.detail || 'Failed to apply');
+        return;
+      }
+
+      setAppliedRoleIds((prev) => {
+        const next = new Set(prev);
+        next.add(String(selectedRole.id));
+        return next;
+      });
+      toast.success(`Applied to ${selectedRole.title}`);
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to connect to server');
+    }
+  };
+
+  const indiaLocationOptions = [
+    'Bengaluru, Karnataka',
+    'Hyderabad, Telangana',
+    'Chennai, Tamil Nadu',
+    'Mumbai, Maharashtra',
+    'Pune, Maharashtra',
+    'Delhi NCR',
+    'Gurugram, Haryana',
+    'Noida, Uttar Pradesh',
+    'Kolkata, West Bengal',
+    'Ahmedabad, Gujarat',
+    'Kochi, Kerala',
+    'Thiruvananthapuram, Kerala',
+    'Coimbatore, Tamil Nadu',
+    'Jaipur, Rajasthan',
+    'Indore, Madhya Pradesh',
+    'Bhubaneswar, Odisha',
+    'Chandigarh',
+    'Visakhapatnam, Andhra Pradesh',
+    'Remote (India)'
+  ];
+
   const addSkill = () => {
     if (skillInput.trim() && !skills.includes(skillInput.trim())) {
       setSkills([...skills, skillInput.trim()]);
       setSkillInput('');
     }
   };
+
   const removeSkill = (skill: string) => {
     setSkills(skills.filter((s) => s !== skill));
   };
+
+  const getFileName = (path: string) => path.split('/').pop() || path;
+
+  const getDocumentUrl = (path?: string) => {
+    if (!path) return undefined;
+    return `${API_BASE_URL}${path}`;
+  };
+
   const handleResumeUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       setResume({
         name: file.name,
-        size: `${(file.size / 1024 / 1024).toFixed(2)} MB`
+        size: `${(file.size / 1024 / 1024).toFixed(2)} MB`,
+        file,
+        path: undefined
       });
-      toast.success('Resume uploaded successfully');
+      toast.success('Resume selected successfully');
     }
   };
+
   const handleCertUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files) {
       const newCerts = Array.from(files).map((file) => ({
         name: file.name,
-        size: `${(file.size / 1024 / 1024).toFixed(2)} MB`
+        size: `${(file.size / 1024 / 1024).toFixed(2)} MB`,
+        file,
+        path: undefined
       }));
       setCertificates([...certificates, ...newCerts]);
-      toast.success(`${newCerts.length} certificate(s) uploaded`);
+      toast.success(`${newCerts.length} certificate(s) selected`);
     }
   };
-  const handleSubmit = () => {
+
+  const uploadDocuments = async () => {
+    if (!userId) return { resumePath: resume?.path, certificatePaths: certificates.map((cert) => cert.path).filter(Boolean) as string[] };
+
+    let resumePath = resume?.path;
+    const certificatePaths: string[] = [];
+    const updatedCertificates = [...certificates];
+
+    if (resume?.file) {
+      const uploaded = await uploadDocumentFile(userId, resume.file, 'resume');
+      resumePath = uploaded;
+      setResume({
+        name: resume.name,
+        size: resume.size,
+        path: uploaded
+      });
+    }
+
+    for (let index = 0; index < certificates.length; index += 1) {
+      const cert = certificates[index];
+      if (cert.file) {
+        const uploaded = await uploadDocumentFile(userId, cert.file, 'certificate');
+        certificatePaths.push(uploaded);
+        updatedCertificates[index] = {
+          name: cert.name,
+          size: cert.size,
+          path: uploaded
+        };
+      } else if (cert.path) {
+        certificatePaths.push(cert.path);
+      }
+    }
+
+    if (updatedCertificates.length > 0) {
+      setCertificates(updatedCertificates);
+    }
+
+    return { resumePath, certificatePaths };
+  };
+
+  const uploadDocumentFile = async (userId: number, file: File, docType: 'resume' | 'certificate') => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('doc_type', docType);
+
+    const response = await fetch(`${API_BASE_URL}/candidate/user/${userId}/upload-document`, {
+      method: 'POST',
+      body: formData
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.detail || 'Document upload failed');
+    }
+    return data.path;
+  };
+
+  const handleSave = async (showToast = true) => {
+    if (!userId) {
+      toast.error('User session not found. Please log in.');
+      return false;
+    }
+
+    let resumePath: string | undefined | null = resume?.path;
+    let certificatePaths: string[] = certificates.map((cert) => cert.path).filter(Boolean) as string[];
+
+    try {
+      const uploadResult = await uploadDocuments();
+      resumePath = uploadResult.resumePath ?? resumePath;
+      certificatePaths = uploadResult.certificatePaths.length > 0 ? uploadResult.certificatePaths : certificatePaths;
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to upload documents');
+      return false;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/candidate/user/${userId}/profile`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          full_name: personalInfo.fullName,
+          email: personalInfo.email,
+          phone: personalInfo.phone,
+          location: personalInfo.location,
+          education: {
+            degree: education.degree,
+            university: education.university,
+            graduation_year: education.graduationYear,
+            gpa: education.gpa
+          },
+          experience: {
+            current_role: experience.currentRole,
+            company: experience.company,
+            years_experience: experience.years,
+            summary: experience.summary
+          },
+          skills: skills,
+          links: {
+            portfolio: links.portfolio,
+            linkedin: links.linkedin,
+            github: links.github
+          },
+          documents: {
+            resume_path: resumePath,
+            certificates: certificatePaths
+          }
+        })
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        toast.error(data.detail || 'Failed to save profile');
+        return false;
+      }
+
+      // Update stored user if fullName or email changed
+      const storedUser = localStorage.getItem('user');
+      if (storedUser && data.user) {
+        const parsed = JSON.parse(storedUser);
+        parsed.full_name = data.user.full_name;
+        parsed.email = data.user.email;
+        localStorage.setItem('user', JSON.stringify(parsed));
+      }
+
+      if (showToast) {
+        toast.success('Draft saved successfully');
+      }
+      return true;
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to connect to server');
+      return false;
+    }
+  };
+
+  const handleSubmit = async () => {
     if (!resume) {
       toast.error('Please upload your resume');
       return;
     }
-    toast.success('Profile saved! Auto-scheduling your interview...');
-    setTimeout(() => {
-      toast.success('Interview scheduled for May 15, 2026 at 2:00 PM');
-    }, 1500);
+    const saved = await handleSave(false);
+    if (saved) {
+      toast.success('Profile saved! Auto-scheduling your interview...');
+      setTimeout(() => {
+        toast.success('Interview scheduled for May 15, 2026 at 2:00 PM');
+      }, 1500);
+    }
   };
   const sections = [
   {
@@ -176,8 +470,18 @@ export function CandidateProfile() {
     icon: LinkIcon
   }];
 
+  if (loading) {
+    return (
+      <DashboardLayout role="candidate" title="Profile" userName={personalInfo.fullName || "John Doe"}>
+        <div className="min-h-[50vh] flex items-center justify-center">
+          <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-primary"></div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   return (
-    <DashboardLayout role="candidate" title="Profile" userName="John Doe">
+    <DashboardLayout role="candidate" title="Profile" userName={personalInfo.fullName || "John Doe"}>
       <motion.div
         initial={{
           opacity: 0,
@@ -538,7 +842,7 @@ export function CandidateProfile() {
                   </div>
                 </div>
                 <Badge variant="primary" size="sm">
-                  {seedJobRoles.length} open roles
+                  {jobRoles.length} open roles
                 </Badge>
               </div>
               <div className="grid md:grid-cols-2 gap-4 mb-4">
@@ -557,7 +861,7 @@ export function CandidateProfile() {
                     className="w-full px-4 py-3 bg-white/70 backdrop-blur-xl border border-white/60 rounded-2xl text-sm text-secondary focus:outline-none focus:ring-2 focus:ring-primary/50 appearance-none cursor-pointer">
                     
                     <option value="">Select a role to apply</option>
-                    {seedJobRoles.map((r) =>
+                    {jobRoles.map((r) =>
                     <option key={r.id} value={r.id}>
                         {r.title} — {r.location}
                       </option>
@@ -613,19 +917,19 @@ export function CandidateProfile() {
                     <Button
                     size="sm"
                     variant={
-                    appliedRoleIds.has(selectedRole.id) ?
+                    appliedRoleIds.has(String(selectedRole.id)) ?
                     'outline' :
                     'primary'
                     }
                     onClick={handleApply}
-                    disabled={appliedRoleIds.has(selectedRole.id)}>
+                    disabled={appliedRoleIds.size > 0}>
                     
-                      {appliedRoleIds.has(selectedRole.id) ?
+                      {appliedRoleIds.has(String(selectedRole.id)) ?
                     <>
                           <CheckCircleIcon className="w-3.5 h-3.5 mr-1" />
                           Applied
                         </> :
-
+ 
                     'Apply Now'
                     }
                     </Button>
@@ -658,7 +962,7 @@ export function CandidateProfile() {
                   </div>
                   <div className="flex flex-wrap gap-1.5">
                     {Array.from(appliedRoleIds).map((id) => {
-                    const r = seedJobRoles.find((x) => x.id === id);
+                    const r = jobRoles.find((x) => String(x.id) === String(id));
                     if (!r) return null;
                     return (
                       <span
@@ -668,7 +972,6 @@ export function CandidateProfile() {
                           <CheckCircleIcon className="w-3 h-3" />
                           {r.title}
                         </span>);
-
                   })}
                   </div>
                 </div>
@@ -727,7 +1030,7 @@ export function CandidateProfile() {
                     </div>
                   </button> :
 
-                <div className="flex items-center justify-between p-4 bg-white/50 rounded-2xl border border-primary/20">
+                <div className="flex flex-col gap-3 p-4 bg-white/50 rounded-2xl border border-primary/20 sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex items-center space-x-3">
                       <div className="w-10 h-10 rounded-lg bg-green-500/10 border border-green-500/20 flex items-center justify-center">
                         <CheckCircleIcon className="w-5 h-5 text-green-600" />
@@ -741,12 +1044,24 @@ export function CandidateProfile() {
                         </div>
                       </div>
                     </div>
-                    <button
-                    onClick={() => setResume(null)}
-                    className="p-2 hover:bg-white/50 rounded-lg transition-colors">
-                    
-                      <XIcon className="w-4 h-4 text-secondary" />
-                    </button>
+                    <div className="flex items-center gap-2">
+                      {resume.path && (
+                        <a
+                          href={getDocumentUrl(resume.path)}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-sm text-primary hover:text-primary/80 font-medium"
+                        >
+                          View
+                        </a>
+                      )}
+                      <button
+                        onClick={() => setResume(null)}
+                        className="p-2 hover:bg-white/50 rounded-lg transition-colors"
+                      >
+                        <XIcon className="w-4 h-4 text-secondary" />
+                      </button>
+                    </div>
                   </div>
                 }
               </div>
@@ -783,16 +1098,28 @@ export function CandidateProfile() {
                           </div>
                         </div>
                       </div>
-                      <button
-                      onClick={() =>
-                      setCertificates(
-                        certificates.filter((_, idx) => idx !== i)
-                      )
-                      }
-                      className="p-2 hover:bg-white/50 rounded-lg transition-colors">
-                      
-                        <XIcon className="w-4 h-4 text-secondary" />
-                      </button>
+                      <div className="flex items-center gap-2">
+                        {cert.path && (
+                          <a
+                            href={getDocumentUrl(cert.path)}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-sm text-primary hover:text-primary/80 font-medium"
+                          >
+                            View
+                          </a>
+                        )}
+                        <button
+                          onClick={() =>
+                            setCertificates(
+                              certificates.filter((_, idx) => idx !== i)
+                            )
+                          }
+                          className="p-2 hover:bg-white/50 rounded-lg transition-colors"
+                        >
+                          <XIcon className="w-4 h-4 text-secondary" />
+                        </button>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -885,11 +1212,11 @@ export function CandidateProfile() {
             }}
             className="flex justify-end space-x-3">
             
-            <Button variant="outline" size="lg">
+            <Button variant="outline" size="lg" onClick={() => handleSave(true)}>
               Save Draft
             </Button>
-            <Button size="lg" onClick={handleSubmit}>
-              Submit
+            <Button size="lg" onClick={handleSubmit} disabled={appliedRoleIds.size > 0}>
+              Schedule Interview
             </Button>
           </motion.div>
         </div>

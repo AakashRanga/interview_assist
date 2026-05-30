@@ -19,6 +19,21 @@ export function DashboardLayout({
   const [isMobile, setIsMobile] = useState(
     typeof window !== 'undefined' ? window.innerWidth < 1024 : false
   );
+  const [displayUserName, setDisplayUserName] = useState(userName);
+
+  useEffect(() => {
+    const userStr = localStorage.getItem('user');
+    if (userStr) {
+      try {
+        const u = JSON.parse(userStr);
+        if (u && u.full_name) {
+          setDisplayUserName(u.full_name);
+        }
+      } catch (e) {
+        console.error('Error parsing session user', e);
+      }
+    }
+  }, [userName]);
   useEffect(() => {
     const handleResize = () => {
       const mobile = window.innerWidth < 1024;
@@ -55,7 +70,7 @@ export function DashboardLayout({
         
         <TopBar
           title={title}
-          userName={userName}
+          userName={displayUserName}
           notificationPath={notificationPath}
           onMenuClick={() => setMobileOpen(true)}
           showMenu={isMobile} />
