@@ -74,7 +74,7 @@ def schedule_interview_task(schedule_id, candidate_id):
         # GET JOB ROLE
         # ============================================
 
-        job_role_title = "Backend Developer"
+        job_role_title = " "
 
         if schedule.job_id:
 
