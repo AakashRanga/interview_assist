@@ -1,16 +1,18 @@
-from datetime import datetime
+from datetime import datetime, date, time
 from pathlib import Path
 import os
 import shutil
 from typing import List, Optional
 
 from fastapi import APIRouter, HTTPException, UploadFile, File, Form
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
+from sqlalchemy.orm import joinedload
 
 from app.database import SessionLocal
-from app.models.candidate import Candidate
+from app.models.candidate import Candidate, CandidateEducation as DBCandidateEducation, CandidateExperience as DBCandidateExperience
 from app.models.candidate_application import CandidateApplication
 from app.models.job_role import JobRole
+from app.models.interview_schedule import InterviewSchedule
 from app.models.user import User
 
 router = APIRouter()
@@ -23,31 +25,43 @@ class CandidateRequest(BaseModel):
 
 
 class CandidateEducation(BaseModel):
-    degree: Optional[str]
-    university: Optional[str]
-    graduation_year: Optional[str]
-    gpa: Optional[str]
+    model_config = ConfigDict(from_attributes=True)
+
+    id: Optional[int] = None
+    degree: Optional[str] = None
+    university: Optional[str] = None
+    graduation_year: Optional[str] = None
+    gpa: Optional[str] = None
 
 
 class CandidateExperience(BaseModel):
-    current_role: Optional[str]
-    company: Optional[str]
-    years_experience: Optional[str]
-    summary: Optional[str]
+    model_config = ConfigDict(from_attributes=True)
+
+    id: Optional[int] = None
+    current_role: Optional[str] = None
+    company: Optional[str] = None
+    years_experience: Optional[str] = None
+    summary: Optional[str] = None
 
 
 class CandidateLinks(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     portfolio: Optional[str]
     linkedin: Optional[str]
     github: Optional[str]
 
 
 class CandidateDocuments(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     resume_path: Optional[str]
     certificates: List[str] = []
 
 
 class ApplicationResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     role_id: int
     role_title: str
@@ -55,37 +69,52 @@ class ApplicationResponse(BaseModel):
     cover_letter: Optional[str]
     status: str
     created_at: datetime
+    job_type: Optional[str] = None
+    venue: Optional[str] = None
 
+
+class InterviewScheduleResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    candidate_id: int
+    job_id: int
+    date: date
+    start_time: time
+    end_time: time
+    gmeet_link: Optional[str] = None
+    interview_status: str
+    job_type: str
+    venue: Optional[str] = None
 
 class JobRoleResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     title: str
     location: str
     experience: str
     total_vacancy: int
-    description: Optional[str]
-
-    class Config:
-        orm_mode = True
-
+    job_type: str
+    venue: Optional[str] = None
+    description: Optional[str] = None
 
 class CandidateProfileResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     full_name: str
     email: str
     phone: Optional[str]
     location: Optional[str]
     status: str
-    education: CandidateEducation
-    experience: CandidateExperience
+    education: List[CandidateEducation] = []
+    experience: List[CandidateExperience] = []
     skills: List[str]
     links: CandidateLinks
     documents: CandidateDocuments
     applications: List[ApplicationResponse]
     open_roles: List[JobRoleResponse] = []
-
-    class Config:
-        orm_mode = True
 
 
 class ApplyRoleRequest(BaseModel):
@@ -99,8 +128,8 @@ class CandidateProfileUpdateRequest(BaseModel):
     email: Optional[str] = None
     phone: Optional[str] = None
     location: Optional[str] = None
-    education: Optional[CandidateEducation] = None
-    experience: Optional[CandidateExperience] = None
+    education: Optional[List[CandidateEducation]] = None
+    experience: Optional[List[CandidateExperience]] = None
     skills: Optional[List[str]] = None
     links: Optional[CandidateLinks] = None
     documents: Optional[CandidateDocuments] = None
@@ -259,8 +288,32 @@ def get_candidate_profile(candidate_id: int):
                 location=role.location,
                 experience=role.experience,
                 total_vacancy=role.total_vacancy,
+                job_type=role.job_type,
+                venue=role.venue,
                 description=role.description
             ))
+
+        education_list = []
+        if candidate.education_list:
+            for edu in candidate.education_list:
+                education_list.append(CandidateEducation(
+                    id=edu.id,
+                    degree=edu.degree,
+                    university=edu.university,
+                    graduation_year=edu.graduation_year,
+                    gpa=edu.gpa
+                ))
+
+        experience_list = []
+        if candidate.experience_list:
+            for exp in candidate.experience_list:
+                experience_list.append(CandidateExperience(
+                    id=exp.id,
+                    current_role=exp.current_role,
+                    company=exp.company,
+                    years_experience=exp.years_experience,
+                    summary=exp.experience_summary
+                ))
 
         return CandidateProfileResponse(
             id=candidate.id,
@@ -269,18 +322,8 @@ def get_candidate_profile(candidate_id: int):
             phone=candidate.phone,
             location=candidate.location,
             status=candidate.status,
-            education=CandidateEducation(
-                degree=candidate.degree,
-                university=candidate.university,
-                graduation_year=candidate.graduation_year,
-                gpa=candidate.gpa
-            ),
-            experience=CandidateExperience(
-                current_role=candidate.current_role,
-                company=candidate.company,
-                years_experience=candidate.years_experience,
-                summary=candidate.experience_summary
-            ),
+            education=education_list,
+            experience=experience_list,
             skills=_safe_list(candidate.skills),
             links=CandidateLinks(
                 portfolio=candidate.portfolio_link,
@@ -337,8 +380,32 @@ def get_candidate_profile_by_user(user_id: int):
                 location=role.location,
                 experience=role.experience,
                 total_vacancy=role.total_vacancy,
+                job_type=role.job_type,
+                venue=role.venue,
                 description=role.description
             ))
+
+        education_list = []
+        if candidate.education_list:
+            for edu in candidate.education_list:
+                education_list.append(CandidateEducation(
+                    id=edu.id,
+                    degree=edu.degree,
+                    university=edu.university,
+                    graduation_year=edu.graduation_year,
+                    gpa=edu.gpa
+                ))
+
+        experience_list = []
+        if candidate.experience_list:
+            for exp in candidate.experience_list:
+                experience_list.append(CandidateExperience(
+                    id=exp.id,
+                    current_role=exp.current_role,
+                    company=exp.company,
+                    years_experience=exp.years_experience,
+                    summary=exp.experience_summary
+                ))
 
         return CandidateProfileResponse(
             id=candidate.id,
@@ -347,18 +414,8 @@ def get_candidate_profile_by_user(user_id: int):
             phone=candidate.phone,
             location=candidate.location,
             status=candidate.status,
-            education=CandidateEducation(
-                degree=candidate.degree,
-                university=candidate.university,
-                graduation_year=candidate.graduation_year,
-                gpa=candidate.gpa
-            ),
-            experience=CandidateExperience(
-                current_role=candidate.current_role,
-                company=candidate.company,
-                years_experience=candidate.years_experience,
-                summary=candidate.experience_summary
-            ),
+            education=education_list,
+            experience=experience_list,
             skills=_safe_list(candidate.skills),
             links=CandidateLinks(
                 portfolio=candidate.portfolio_link,
@@ -407,17 +464,35 @@ def update_candidate_profile(user_id: int, data: CandidateProfileUpdateRequest):
         if data.location is not None:
             candidate.location = data.location
 
-        if data.education:
-            candidate.degree = data.education.degree
-            candidate.university = data.education.university
-            candidate.graduation_year = data.education.graduation_year
-            candidate.gpa = data.education.gpa
+        if data.education is not None:
+            # Clear existing education records
+            db.query(DBCandidateEducation).filter(DBCandidateEducation.candidate_id == candidate.id).delete()
+            # Add new education records
+            for edu in data.education:
+                if edu.degree or edu.university or edu.graduation_year or edu.gpa:
+                    db_edu = DBCandidateEducation(
+                        candidate_id=candidate.id,
+                        degree=edu.degree,
+                        university=edu.university,
+                        graduation_year=edu.graduation_year,
+                        gpa=edu.gpa
+                    )
+                    db.add(db_edu)
 
-        if data.experience:
-            candidate.current_role = data.experience.current_role
-            candidate.company = data.experience.company
-            candidate.years_experience = data.experience.years_experience
-            candidate.experience_summary = data.experience.summary
+        if data.experience is not None:
+            # Clear existing experience records
+            db.query(DBCandidateExperience).filter(DBCandidateExperience.candidate_id == candidate.id).delete()
+            # Add new experience records
+            for exp in data.experience:
+                if exp.current_role or exp.company or exp.years_experience or exp.summary:
+                    db_exp = DBCandidateExperience(
+                        candidate_id=candidate.id,
+                        current_role=exp.current_role,
+                        company=exp.company,
+                        years_experience=exp.years_experience,
+                        experience_summary=exp.summary
+                    )
+                    db.add(db_exp)
 
         if data.skills is not None:
             candidate.skills = ",".join(data.skills)
@@ -475,6 +550,143 @@ def get_locations():
     try:
         locations = db.query(JobRole.location).distinct().all()
         return [location[0] for location in locations]
+    finally:
+        db.close()
+
+@router.get("/candidate/user/{user_id}/dashboard")
+def get_candidate_dashboard(user_id: int):
+    db = SessionLocal()
+    try:
+        # Eagerly load candidate with applications and their roles
+        candidate = db.query(Candidate).options(
+            joinedload(Candidate.applications).joinedload(CandidateApplication.role)
+        ).filter(Candidate.user_id == user_id).first()
+
+        if not candidate:
+            raise HTTPException(status_code=404, detail="Candidate not found")
+
+        applications = []
+        for app in candidate.applications:
+            role = app.role if app.role else None
+            applications.append(ApplicationResponse(
+                id=app.id,
+                role_id=app.role_id,
+                role_title=role.title if role else "",
+                preferred_location=app.preferred_location,
+                cover_letter=app.cover_letter,
+                status=app.status,
+                created_at=app.created_at,
+                job_type=role.job_type if role else None,
+                venue=role.venue if role else None,
+            ))
+
+        # Sort by created_at to get latest
+        sorted_applications = sorted(candidate.applications, key=lambda a: a.created_at, reverse=True)
+        latest_app = sorted_applications[0] if sorted_applications else None
+        interview_schedule = None
+        if latest_app:
+            interview = db.query(InterviewSchedule).filter(
+                InterviewSchedule.candidate_id == candidate.id,
+                InterviewSchedule.job_id == latest_app.role_id,
+                InterviewSchedule.interview_status == "scheduled"
+            ).first()
+            if interview:
+                # Get job details for venue and job_type
+                job_role = db.query(JobRole).filter(JobRole.id == latest_app.role_id).first()
+                interview_schedule = InterviewScheduleResponse(
+                    id=interview.id,
+                    candidate_id=interview.candidate_id,
+                    job_id=interview.job_id,
+                    date=interview.date,
+                    start_time=interview.start_time,
+                    end_time=interview.end_time,
+                    gmeet_link=interview.gmeet_link,
+                    interview_status=interview.interview_status,
+                    job_type=job_role.job_type if job_role else "",
+                    venue=job_role.venue if job_role else None,
+                )
+
+        # Manually construct the CandidateProfileResponse to avoid Pydantic
+        # validation errors when passing SQLAlchemy objects directly.
+        education_list = []
+        if candidate.education_list:
+            for edu in candidate.education_list:
+                education_list.append(CandidateEducation(
+                    id=edu.id,
+                    degree=edu.degree,
+                    university=edu.university,
+                    graduation_year=edu.graduation_year,
+                    gpa=edu.gpa
+                ))
+
+        experience_list = []
+        if candidate.experience_list:
+            for exp in candidate.experience_list:
+                experience_list.append(CandidateExperience(
+                    id=exp.id,
+                    current_role=exp.current_role,
+                    company=exp.company,
+                    years_experience=exp.years_experience,
+                    summary=exp.experience_summary
+                ))
+
+        open_roles = []
+        for role in db.query(JobRole).all():
+            open_roles.append(JobRoleResponse(
+                id=role.id,
+                title=role.title,
+                location=role.location,
+                experience=role.experience,
+                total_vacancy=role.total_vacancy,
+                job_type=role.job_type,
+                venue=role.venue,
+                description=role.description
+            ))
+
+        candidate_response = CandidateProfileResponse(
+            id=candidate.id,
+            full_name=candidate.full_name,
+            email=candidate.email,
+            phone=candidate.phone,
+            location=candidate.location,
+            status=candidate.status,
+            education=education_list,
+            experience=experience_list,
+            skills=_safe_list(candidate.skills),
+            links=CandidateLinks(
+                portfolio=candidate.portfolio_link,
+                linkedin=candidate.linkedin,
+                github=candidate.github
+            ),
+            documents=CandidateDocuments(
+                resume_path=candidate.resume_path,
+                certificates=_safe_list(candidate.certificates)
+            ),
+            applications=applications,
+            open_roles=open_roles
+        )
+
+        latest_application_response = None
+        if latest_app:
+            role = latest_app.role if latest_app.role else None
+            latest_application_response = ApplicationResponse(
+                id=latest_app.id,
+                role_id=latest_app.role_id,
+                role_title=role.title if role else "",
+                preferred_location=latest_app.preferred_location,
+                cover_letter=latest_app.cover_letter,
+                status=latest_app.status,
+                created_at=latest_app.created_at,
+                job_type=role.job_type if role else None,
+                venue=role.venue if role else None,
+            )
+
+        return {
+            "candidate": candidate_response,
+            "applications": applications,
+            "latest_application": latest_application_response,
+            "interview_schedule": interview_schedule,
+        }
     finally:
         db.close()
 

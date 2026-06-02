@@ -42,6 +42,8 @@ export interface PanelCategory {
   currentLoad: number;
   meetLink: string;
   zoomLink: string;
+  mode?: 'Online' | 'Offline';
+  venue?: string;
 }
 
 export interface PanelGroup {
@@ -129,7 +131,8 @@ export const mockPanels: PanelCategory[] = [
   capacity: 10,
   currentLoad: 10,
   meetLink: 'https://meet.google.com/panel-a-hr-001',
-  zoomLink: 'https://zoom.us/j/1110000001'
+  zoomLink: 'https://zoom.us/j/1110000001',
+  mode: 'Online'
 },
 {
   id: 'panel-a-tech',
@@ -145,7 +148,9 @@ export const mockPanels: PanelCategory[] = [
   capacity: 10,
   currentLoad: 10,
   meetLink: 'https://meet.google.com/panel-a-tech-002',
-  zoomLink: 'https://zoom.us/j/1110000002'
+  zoomLink: 'https://zoom.us/j/1110000002',
+  mode: 'Offline',
+  venue: 'Tech Campus, Conference Room B'
 },
 {
   id: 'panel-a-p1',
@@ -161,7 +166,7 @@ export const mockPanels: PanelCategory[] = [
   capacity: 10,
   currentLoad: 10,
   meetLink: 'https://meet.google.com/panel-a-p1-003',
-  zoomLink: 'https://zoom.us/j/1110000003'
+  zoomLink: 'https://zoom.us/j/1110000003',
 },
 {
   id: 'panel-a-p2',
@@ -177,7 +182,7 @@ export const mockPanels: PanelCategory[] = [
   capacity: 10,
   currentLoad: 10,
   meetLink: 'https://meet.google.com/panel-a-p2-004',
-  zoomLink: 'https://zoom.us/j/1110000004'
+  zoomLink: 'https://zoom.us/j/1110000004',
 },
 {
   id: 'panel-a-p3',
@@ -193,7 +198,7 @@ export const mockPanels: PanelCategory[] = [
   capacity: 10,
   currentLoad: 10,
   meetLink: 'https://meet.google.com/panel-a-p3-005',
-  zoomLink: 'https://zoom.us/j/1110000005'
+  zoomLink: 'https://zoom.us/j/1110000005',
 },
 // Panel B categories
 {
@@ -210,7 +215,7 @@ export const mockPanels: PanelCategory[] = [
   capacity: 10,
   currentLoad: 6,
   meetLink: 'https://meet.google.com/panel-b-hr-006',
-  zoomLink: 'https://zoom.us/j/2220000001'
+  zoomLink: 'https://zoom.us/j/2220000001',
 },
 {
   id: 'panel-b-tech',
@@ -226,7 +231,7 @@ export const mockPanels: PanelCategory[] = [
   capacity: 10,
   currentLoad: 8,
   meetLink: 'https://meet.google.com/panel-b-tech-007',
-  zoomLink: 'https://zoom.us/j/2220000002'
+  zoomLink: 'https://zoom.us/j/2220000002',
 }];
 
 

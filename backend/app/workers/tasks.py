@@ -197,6 +197,15 @@ def schedule_interview_task(schedule_id, candidate_id):
         schedule.gmeet_link = meet_link
         schedule.interview_status = "scheduled"
 
+        # Also update candidate_applications status to "Scheduled"
+        application = db.query(CandidateApplication).filter(
+            CandidateApplication.candidate_id == candidate_id,
+            CandidateApplication.role_id == schedule.job_id
+        ).first()
+
+        if application:
+            application.status = "Scheduled"
+
         db.commit()
 
         print(

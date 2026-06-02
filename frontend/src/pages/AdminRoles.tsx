@@ -20,6 +20,8 @@ export function AdminRoles() {
   const [location, setLocation] = useState('');
   const [experience, setExperience] = useState('');
   const [totalVacancy, setTotalVacancy] = useState('');
+  const [jobType, setJobType] = useState<'Online' | 'Offline'>('Online');
+  const [venue, setVenue] = useState('');
   const [description, setDescription] = useState('');
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,6 +37,10 @@ export function AdminRoles() {
       toast.error('Experience is required');
       return;
     }
+    if (jobType === 'Offline' && !venue.trim()) {
+      toast.error('Venue is required for offline roles');
+      return;
+    }
     const vacancyNum = parseInt(totalVacancy, 10);
     if (!totalVacancy || isNaN(vacancyNum) || vacancyNum < 1) {
       toast.error('Total vacancy must be at least 1');
@@ -46,6 +52,8 @@ export function AdminRoles() {
       location: location.trim(),
       experience: experience.trim(),
       totalVacancy: vacancyNum,
+      jobType,
+      venue: jobType === 'Offline' ? venue.trim() : undefined,
       description: description.trim() || undefined,
       createdAt: new Date().toISOString().slice(0, 10)
     };
@@ -54,6 +62,8 @@ export function AdminRoles() {
     setLocation('');
     setExperience('');
     setTotalVacancy('');
+    setJobType('Online');
+    setVenue('');
     setDescription('');
     toast.success('Job role created');
   };
@@ -139,7 +149,26 @@ export function AdminRoles() {
                 value={totalVacancy}
                 onChange={(e) => setTotalVacancy(e.target.value)} />
               
+                  <div>
+                    <label className="block text-[10px] font-medium text-secondary/70 mb-2 uppercase tracking-wider">
+                      Job Type
+                    </label>
+                    <select
+                      value={jobType}
+                      onChange={(e) => setJobType(e.target.value as 'Online' | 'Offline')}
+                      className="w-full px-4 py-3 bg-white/70 border border-white/60 rounded-2xl text-sm text-secondary focus:outline-none focus:ring-2 focus:ring-primary/50 appearance-none cursor-pointer">
+                      <option value="Online">Online</option>
+                      <option value="Offline">Offline</option>
+                    </select>
+                  </div>
             </div>
+                {jobType === 'Offline' && (
+                <Input
+                  label="Venue"
+                  placeholder="e.g. Building 5, Room 203"
+                  value={venue}
+                  onChange={(e) => setVenue(e.target.value)} />
+                )}
             <div>
               <label className="block text-[10px] font-medium text-secondary/70 mb-2 uppercase tracking-wider">
                 Description (optional)
@@ -208,6 +237,12 @@ export function AdminRoles() {
                     <th className="px-5 py-3 text-left text-[10px] font-semibold text-secondary/70 uppercase tracking-wider">
                       Experience
                     </th>
+                    <th className="px-5 py-3 text-left text-[10px] font-semibold text-secondary/70 uppercase tracking-wider">
+                      Type
+                    </th>
+                    <th className="px-5 py-3 text-left text-[10px] font-semibold text-secondary/70 uppercase tracking-wider">
+                      Venue
+                    </th>
                     <th className="px-5 py-3 text-left text-[10px] font-semibold text-secondary/70 uppercase tracking-wider w-28">
                       Vacancy
                     </th>
@@ -263,6 +298,12 @@ export function AdminRoles() {
                             <ClockIcon className="w-3 h-3 text-secondary/50" />
                             {role.experience}
                           </div>
+                        </td>
+                        <td className="px-5 py-3 text-[12px] text-slate-700">
+                          {role.jobType}
+                        </td>
+                        <td className="px-5 py-3 text-[12px] text-slate-700">
+                          {role.venue || '—'}
                         </td>
                         <td className="px-5 py-3">
                           <div className="inline-flex items-center gap-1 px-2 py-0.5 bg-primary/10 border border-primary/20 rounded-full">

@@ -319,7 +319,7 @@ export function CandidateDetailModal({
                       <div className="text-xs font-semibold text-slate-900">
                         {candidate.mode}
                         {candidate.venue &&
-                      <div className="text-[10px] text-slate-500 mt-0.5 font-normal truncate">
+                      <div className="text-[10px] text-slate-800 mt-0.5 font-normal truncate">
                             {candidate.venue}
                           </div>
                       }

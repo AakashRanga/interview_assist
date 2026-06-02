@@ -41,18 +41,21 @@ export function CandidateProfile() {
     phone: '',
     location: ''
   });
-  const [education, setEducation] = useState({
-    degree: '',
-    university: '',
-    graduationYear: '',
-    gpa: ''
-  });
-  const [experience, setExperience] = useState({
-    currentRole: '',
-    company: '',
-    years: '',
-    summary: ''
-  });
+  const [educationList, setEducationList] = useState<Array<{
+    id?: number;
+    degree: string;
+    university: string;
+    graduationYear: string;
+    gpa: string;
+  }>>([{ degree: '', university: '', graduationYear: '', gpa: '' }]);
+
+  const [experienceList, setExperienceList] = useState<Array<{
+    id?: number;
+    currentRole: string;
+    company: string;
+    years: string;
+    summary: string;
+  }>>([{ currentRole: '', company: '', years: '', summary: '' }]);
   const [skills, setSkills] = useState<string[]>([]);
   const [skillInput, setSkillInput] = useState('');
   const [preferences, setPreferences] = useState({
@@ -105,22 +108,32 @@ export function CandidateProfile() {
         location: data.location || ''
       });
       
-      if (data.education) {
-        setEducation({
-          degree: data.education.degree || '',
-          university: data.education.university || '',
-          graduationYear: data.education.graduation_year || '',
-          gpa: data.education.gpa || ''
-        });
+      if (data.education && Array.isArray(data.education) && data.education.length > 0) {
+        setEducationList(
+          data.education.map((edu: any) => ({
+            id: edu.id,
+            degree: edu.degree || '',
+            university: edu.university || '',
+            graduationYear: edu.graduation_year || '',
+            gpa: edu.gpa || ''
+          }))
+        );
+      } else {
+        setEducationList([{ degree: '', university: '', graduationYear: '', gpa: '' }]);
       }
       
-      if (data.experience) {
-        setExperience({
-          currentRole: data.experience.current_role || '',
-          company: data.experience.company || '',
-          years: data.experience.years_experience || '',
-          summary: data.experience.summary || ''
-        });
+      if (data.experience && Array.isArray(data.experience) && data.experience.length > 0) {
+        setExperienceList(
+          data.experience.map((exp: any) => ({
+            id: exp.id,
+            currentRole: exp.current_role || '',
+            company: exp.company || '',
+            years: exp.years_experience || '',
+            summary: exp.summary || ''
+          }))
+        );
+      } else {
+        setExperienceList([{ currentRole: '', company: '', years: '', summary: '' }]);
       }
       
       if (data.skills) {
@@ -369,18 +382,20 @@ export function CandidateProfile() {
           email: personalInfo.email,
           phone: personalInfo.phone,
           location: personalInfo.location,
-          education: {
-            degree: education.degree,
-            university: education.university,
-            graduation_year: education.graduationYear,
-            gpa: education.gpa
-          },
-          experience: {
-            current_role: experience.currentRole,
-            company: experience.company,
-            years_experience: experience.years,
-            summary: experience.summary
-          },
+          education: educationList.map((edu) => ({
+            id: edu.id,
+            degree: edu.degree,
+            university: edu.university,
+            graduation_year: edu.graduationYear,
+            gpa: edu.gpa
+          })),
+          experience: experienceList.map((exp) => ({
+            id: exp.id,
+            current_role: exp.currentRole,
+            company: exp.company,
+            years_experience: exp.years,
+            summary: exp.summary
+          })),
           skills: skills,
           links: {
             portfolio: links.portfolio,
@@ -627,47 +642,74 @@ export function CandidateProfile() {
                   Education
                 </h2>
               </div>
-              <div className="grid md:grid-cols-2 gap-4">
-                <Input
-                  label="Degree"
-                  value={education.degree}
-                  onChange={(e) =>
-                  setEducation({
-                    ...education,
-                    degree: e.target.value
-                  })
-                  } />
+              <div className="space-y-6">
+                {educationList.map((edu, index) => (
+                  <div key={index} className="relative p-5 rounded-2xl bg-white/40 border border-white/60 shadow-sm space-y-4">
+                    {educationList.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEducationList(educationList.filter((_, i) => i !== index));
+                          toast.success('Education entry removed');
+                        }}
+                        className="absolute top-4 right-4 p-1.5 bg-red-500/10 text-red-600 rounded-lg hover:bg-red-500/20 transition-all cursor-pointer border-0"
+                        title="Remove Education"
+                      >
+                        <XIcon className="w-4 h-4" />
+                      </button>
+                    )}
+                    <div className="text-[11px] font-semibold text-secondary/60 uppercase tracking-wider mb-2">
+                      Education #{index + 1}
+                    </div>
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <Input
+                        label="Degree"
+                        value={edu.degree}
+                        onChange={(e) => {
+                          const updated = [...educationList];
+                          updated[index] = { ...updated[index], degree: e.target.value };
+                          setEducationList(updated);
+                        }}
+                      />
+                      <Input
+                        label="University"
+                        value={edu.university}
+                        onChange={(e) => {
+                          const updated = [...educationList];
+                          updated[index] = { ...updated[index], university: e.target.value };
+                          setEducationList(updated);
+                        }}
+                      />
+                      <Input
+                        label="Graduation Year"
+                        value={edu.graduationYear}
+                        onChange={(e) => {
+                          const updated = [...educationList];
+                          updated[index] = { ...updated[index], graduationYear: e.target.value };
+                          setEducationList(updated);
+                        }}
+                      />
+                      <Input
+                        label="GPA"
+                        value={edu.gpa}
+                        onChange={(e) => {
+                          const updated = [...educationList];
+                          updated[index] = { ...updated[index], gpa: e.target.value };
+                          setEducationList(updated);
+                        }}
+                      />
+                    </div>
+                  </div>
+                ))}
                 
-                <Input
-                  label="University"
-                  value={education.university}
-                  onChange={(e) =>
-                  setEducation({
-                    ...education,
-                    university: e.target.value
-                  })
-                  } />
-                
-                <Input
-                  label="Graduation Year"
-                  value={education.graduationYear}
-                  onChange={(e) =>
-                  setEducation({
-                    ...education,
-                    graduationYear: e.target.value
-                  })
-                  } />
-                
-                <Input
-                  label="GPA"
-                  value={education.gpa}
-                  onChange={(e) =>
-                  setEducation({
-                    ...education,
-                    gpa: e.target.value
-                  })
-                  } />
-                
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setEducationList([...educationList, { degree: '', university: '', graduationYear: '', gpa: '' }])}
+                  className="w-full mt-2 cursor-pointer"
+                >
+                  + Add Education
+                </Button>
               </div>
             </GlassCard>
           </motion.section>
@@ -696,54 +738,81 @@ export function CandidateProfile() {
                   Experience
                 </h2>
               </div>
-              <div className="grid md:grid-cols-2 gap-4 mb-4">
-                <Input
-                  label="Current Role"
-                  value={experience.currentRole}
-                  onChange={(e) =>
-                  setExperience({
-                    ...experience,
-                    currentRole: e.target.value
-                  })
-                  } />
+              <div className="space-y-6">
+                {experienceList.map((exp, index) => (
+                  <div key={index} className="relative p-5 rounded-2xl bg-white/40 border border-white/60 shadow-sm space-y-4">
+                    {experienceList.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setExperienceList(experienceList.filter((_, i) => i !== index));
+                          toast.success('Experience entry removed');
+                        }}
+                        className="absolute top-4 right-4 p-1.5 bg-red-500/10 text-red-600 rounded-lg hover:bg-red-500/20 transition-all cursor-pointer border-0"
+                        title="Remove Experience"
+                      >
+                        <XIcon className="w-4 h-4" />
+                      </button>
+                    )}
+                    <div className="text-[11px] font-semibold text-secondary/60 uppercase tracking-wider mb-2">
+                      Experience #{index + 1}
+                    </div>
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <Input
+                        label="Job Role / Title"
+                        value={exp.currentRole}
+                        onChange={(e) => {
+                          const updated = [...experienceList];
+                          updated[index] = { ...updated[index], currentRole: e.target.value };
+                          setExperienceList(updated);
+                        }}
+                      />
+                      <Input
+                        label="Company"
+                        value={exp.company}
+                        onChange={(e) => {
+                          const updated = [...experienceList];
+                          updated[index] = { ...updated[index], company: e.target.value };
+                          setExperienceList(updated);
+                        }}
+                      />
+                      <Input
+                        label="Years of Experience"
+                        value={exp.years}
+                        onChange={(e) => {
+                          const updated = [...experienceList];
+                          updated[index] = { ...updated[index], years: e.target.value };
+                          setExperienceList(updated);
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-secondary/70 mb-2 uppercase tracking-wide">
+                        Summary
+                      </label>
+                      <textarea
+                        rows={3}
+                        value={exp.summary}
+                        onChange={(e) => {
+                          const updated = [...experienceList];
+                          updated[index] = { ...updated[index], summary: e.target.value };
+                          setExperienceList(updated);
+                        }}
+                        placeholder="Briefly describe your work experience..."
+                        className="w-full px-4 py-3 bg-white/70 backdrop-blur-xl border border-white/60 rounded-2xl text-sm text-secondary placeholder:text-neutral/50 focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none font-medium"
+                      />
+                    </div>
+                  </div>
+                ))}
                 
-                <Input
-                  label="Company"
-                  value={experience.company}
-                  onChange={(e) =>
-                  setExperience({
-                    ...experience,
-                    company: e.target.value
-                  })
-                  } />
-                
-                <Input
-                  label="Years of Experience"
-                  value={experience.years}
-                  onChange={(e) =>
-                  setExperience({
-                    ...experience,
-                    years: e.target.value
-                  })
-                  } />
-                
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-secondary/70 mb-2 uppercase tracking-wide">
-                  Summary
-                </label>
-                <textarea
-                  rows={4}
-                  value={experience.summary}
-                  onChange={(e) =>
-                  setExperience({
-                    ...experience,
-                    summary: e.target.value
-                  })
-                  }
-                  placeholder="Briefly describe your work experience..."
-                  className="w-full px-4 py-3 bg-white/70 backdrop-blur-xl border border-white/60 rounded-2xl text-sm text-secondary placeholder:text-neutral/50 focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none" />
-                
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setExperienceList([...experienceList, { currentRole: '', company: '', years: '', summary: '' }])}
+                  className="w-full mt-2 cursor-pointer"
+                >
+                  + Add Experience
+                </Button>
               </div>
             </GlassCard>
           </motion.section>
@@ -863,7 +932,7 @@ export function CandidateProfile() {
                     <option value="">Select a role to apply</option>
                     {jobRoles.map((r) =>
                     <option key={r.id} value={r.id}>
-                        {r.title} — {r.location}
+                        {r.title} — {r.location} — {r.job_type || r.jobType || 'Online'}
                       </option>
                     )}
                   </select>
@@ -952,6 +1021,18 @@ export function CandidateProfile() {
                     'vacancy' :
                     'vacancies'}
                     </div>
+                    <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-slate-100 border border-slate-300 rounded-full text-[11px] font-medium text-slate-700">
+                      <span>Type:</span>
+                      <span>{selectedRole.job_type || selectedRole.jobType || 'Online'}</span>
+                    </div>
+                    {((selectedRole.job_type || selectedRole.jobType) === 'Offline') && selectedRole.venue && (
+                      <div className="w-full rounded-2xl bg-slate-50 p-3 border border-slate-200 text-[13px] text-slate-800 mt-3">
+                        <div className="text-[10px] uppercase tracking-wide text-slate-500 mb-1">
+                          Interview Venue
+                        </div>
+                        {selectedRole.venue}
+                      </div>
+                    )}
                   </div>
                 </motion.div>
               }

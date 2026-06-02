@@ -1,19 +1,45 @@
 from pathlib import Path
+import os
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from sqlalchemy import text
 from app.routes.resume_routes import router as resume_router
 from app.routes.auth_routes import router as auth_router
 from app.routes.admin_routes import router as admin_router
 
 from app.database import engine, SessionLocal, Base
-from app.models.candidate import Candidate
+from app.models.candidate import Candidate, CandidateEducation, CandidateExperience
 from app.models.job_role import JobRole
 from app.models.user import User
 from app.models.interview_schedule import InterviewSchedule
 
 Base.metadata.create_all(bind=engine)
+
+with engine.begin() as connection:
+    if os.getenv("DB_NAME"):
+        db_name = os.getenv("DB_NAME")
+        result = connection.execute(
+            text(
+                "SELECT COLUMN_NAME FROM information_schema.columns "
+                "WHERE table_schema = :schema AND table_name = 'job_roles'"
+            ),
+            {"schema": db_name}
+        )
+        existing_columns = {row[0] for row in result}
+        if "job_type" not in existing_columns:
+            connection.execute(
+                text(
+                    "ALTER TABLE job_roles ADD COLUMN job_type VARCHAR(50) NOT NULL DEFAULT 'Online'"
+                )
+            )
+        if "venue" not in existing_columns:
+            connection.execute(
+                text(
+                    "ALTER TABLE job_roles ADD COLUMN venue VARCHAR(255) NULL"
+                )
+            )
 
 with SessionLocal() as db:
     if not db.query(JobRole).first():
@@ -23,6 +49,7 @@ with SessionLocal() as db:
                 location='Bangalore, India',
                 experience='5-8 years',
                 total_vacancy=4,
+                job_type='Online',
                 description='Build delightful user experiences with React, TypeScript, and modern frontend tooling.'
             ),
             JobRole(
@@ -30,6 +57,8 @@ with SessionLocal() as db:
                 location='Hyderabad, India',
                 experience='3-5 years',
                 total_vacancy=2,
+                job_type='Offline',
+                venue='Tech Park Campus, Floor 3, Room 12',
                 description='Design beautiful, intuitive product flows and contribute to our design system.'
             ),
             JobRole(
@@ -37,6 +66,8 @@ with SessionLocal() as db:
                 location='Pune, India',
                 experience='6-10 years',
                 total_vacancy=1,
+                job_type='Offline',
+                venue='Corporate HQ, Conference Room A',
                 description='Partner with engineering leadership to drive people strategy and talent growth.'
             )
         ]
@@ -81,14 +112,6 @@ with SessionLocal() as db:
             resume_path='resume/john_doe_resume.pdf',
             skills='React,TypeScript,Node.js',
             certificates='AWS Certification,React Professional',
-            degree='Bachelor of Computer Science',
-            university='Stanford University',
-            graduation_year='2022',
-            gpa='3.8',
-            current_role='Frontend Developer',
-            company='Tech Corp',
-            years_experience='3',
-            experience_summary='Experienced frontend engineer building modern web applications.',
             portfolio_link='https://john-doe.dev',
             linkedin='https://linkedin.com/in/johndoe',
             github='https://github.com/johndoe',
@@ -96,12 +119,37 @@ with SessionLocal() as db:
         )
         db.add(seed_candidate)
         db.commit()
+        db.refresh(seed_candidate)
+
+        # Seed candidate education
+        seed_edu = CandidateEducation(
+            candidate_id=seed_candidate.id,
+            degree='Bachelor of Computer Science',
+            university='Stanford University',
+            graduation_year='2022',
+            gpa='3.8'
+        )
+        db.add(seed_edu)
+
+        # Seed candidate experience
+        seed_exp = CandidateExperience(
+            candidate_id=seed_candidate.id,
+            current_role='Frontend Developer',
+            company='Tech Corp',
+            years_experience='3',
+            experience_summary='Experienced frontend engineer building modern web applications.'
+        )
+        db.add(seed_exp)
+        db.commit()
 
 app = FastAPI(title="AI Recruitment System")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "http://localhost:8189",
+        "http://127.0.0.1:8189",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

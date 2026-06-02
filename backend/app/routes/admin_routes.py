@@ -4,9 +4,11 @@ from pydantic import BaseModel, EmailStr
 from app.database import SessionLocal
 from app.models.user import User
 from app.models.candidate import Candidate
+from app.models.candidate_application import CandidateApplication
 from app.models.interview_schedule import InterviewSchedule
 from app.workers.tasks import schedule_interview_task
 from datetime import datetime, date, time, timedelta
+from zoneinfo import ZoneInfo
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -110,11 +112,23 @@ def find_available_slot(db, target_date: date = None):
     """
     Find the next available slot for interview.
     Returns (start_time, end_time) or None if no slots available.
+    Uses Indian Standard Time (IST).
     """
-    if target_date is None:
-        target_date = date.today()
+    # Get current time in IST
+    IST = ZoneInfo('Asia/Kolkata')
+    now_ist = datetime.now(IST)
+    current_time_ist = now_ist.time()
+    today_ist = now_ist.date()
 
-    # Define working hours (9 AM to 5 PM)
+    # If no target_date provided, use today (IST)
+    if target_date is None:
+        target_date = today_ist
+
+    # If target_date is in the past, return None
+    if target_date < today_ist:
+        return None
+
+    # Define working hours (9 AM to 5 PM IST)
     slot_duration = timedelta(hours=1)
     work_start = time(9, 0)
     work_end = time(17, 0)
@@ -129,7 +143,23 @@ def find_available_slot(db, target_date: date = None):
 
     # Find first available slot
     current_time = work_start
-    while current_time < work_end:
+
+    # If scheduling for today, start from the next available slot after current time
+    if target_date == today_ist:
+        # Check if current time is within working hours
+        if current_time_ist >= work_start and current_time_ist < work_end:
+            hour_now = now_ist.hour
+            # If minute > 0, we're past the start of current hour slot, use next slot
+            if current_time_ist.minute > 0:
+                next_hour = hour_now + 1
+                # If next hour is still within work hours
+                if next_hour < 17:
+                    current_time = time(next_hour, 0)
+                else:
+                    return None  # No more slots today
+            # If minute == 0, we're exactly at slot start, can use current slot
+
+    while current_time and current_time < work_end:
         slot_end = (datetime.combine(target_date, current_time) + slot_duration).time()
 
         # Check if this slot is occupied
@@ -174,13 +204,15 @@ def schedule_interview(data: ScheduleInterviewRequest):
         if candidate.status != "Applied":
             raise HTTPException(status_code=400, detail=f"Candidate status '{candidate.status}' is not active")
 
-        # Step 3: Find available slot
-        target_date = date.today()
+        # Step 3: Find available slot (uses IST)
+        IST = ZoneInfo('Asia/Kolkata')
+        now_ist = datetime.now(IST)
+        target_date = now_ist.date()
         slot = find_available_slot(db, target_date)
 
         if not slot:
             # Try tomorrow
-            target_date = date.today() + timedelta(days=1)
+            target_date = now_ist.date() + timedelta(days=1)
             slot = find_available_slot(db, target_date)
 
         if not slot:
@@ -200,6 +232,16 @@ def schedule_interview(data: ScheduleInterviewRequest):
         db.add(schedule)
         db.commit()
         db.refresh(schedule)
+        # Update candidate application status to "Scheduled"
+        application = db.query(CandidateApplication).filter(
+            CandidateApplication.candidate_id == data.candidate_id,
+            CandidateApplication.role_id == data.job_id,
+            CandidateApplication.status == "Applied"
+        ).first()
+        if application:
+            application.status = "Scheduled"
+            db.add(application)
+            db.commit()
 
         # Step 5: Queue Celery task
         schedule_interview_task.delay(schedule.id, data.candidate_id)
