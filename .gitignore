@@ -1,0 +1,18 @@
+
+# Python virtual environment
+venv/
+
+# Backend
+backend/.env
+
+# Frontend
+frontend/node_modules/
+frontend/.env
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Files
+n8n Google Meet Integration API.json
+Ai Interview Orchestration Platform Brief Documentation.pdf
