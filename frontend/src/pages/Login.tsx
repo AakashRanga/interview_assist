@@ -97,6 +97,7 @@ export function Login() {
 
           <form onSubmit={handleLogin} className="space-y-4">
             <Input
+             id="email"
               type="email"
               label="Email"
               placeholder="you@example.com"
@@ -106,6 +107,7 @@ export function Login() {
             
 
             <Input
+             id="password"
               type="password"
               label="Password"
               placeholder="••••••••"

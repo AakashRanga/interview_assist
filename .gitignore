@@ -7,7 +7,7 @@ backend/.env
 
 # Frontend
 frontend/node_modules/
-frontend/.env
+
 
 # Python cache
 __pycache__/

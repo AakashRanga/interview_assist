@@ -151,6 +151,7 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:8189",
         "http://127.0.0.1:8189",
+        "https://aakashranga.github.io/interview_assist/"
     ],
     allow_credentials=True,
     allow_methods=["*"],
