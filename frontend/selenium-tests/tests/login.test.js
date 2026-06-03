@@ -19,7 +19,7 @@ describe('Login Test', function () {
 
     it('should login successfully', async () => {
 
-        await driver.get('http://localhost:8189/interview_assist/login');
+        await driver.get('https://aakashranga.github.io/interview_assist/login');
 
         // Wait for email field
         await driver.wait(
