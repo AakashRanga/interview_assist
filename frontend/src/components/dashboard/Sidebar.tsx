@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
@@ -17,6 +17,7 @@ import {
   BriefcaseIcon } from
 'lucide-react';
 import { VirtusaLogo } from '../ui/VirtusaLogo';
+import { API_BASE_URL } from '../../config';
 interface SidebarProps {
   role: 'candidate' | 'panel' | 'admin';
   collapsed: boolean;
@@ -34,12 +35,50 @@ export function Sidebar({
   onMobileClose
 }: SidebarProps) {
   const navigate = useNavigate();
+  const [unreadCount, setUnreadCount] = useState(0);
 
   const handleLogout = () => {
     localStorage.removeItem('user');
     localStorage.removeItem('role');
     navigate('/login');
   };
+
+  useEffect(() => {
+    const fetchUnreadCount = async () => {
+      if (role === 'admin') {
+        setUnreadCount(0);
+        return;
+      }
+
+      const userStr = localStorage.getItem('user');
+      if (!userStr) return;
+
+      try {
+        const user = JSON.parse(userStr);
+        if (!user?.id) return;
+
+        const response = await fetch(`${API_BASE_URL}/user/${user.id}/notifications/unread-count`);
+        if (!response.ok) return;
+
+        const data = await response.json();
+        setUnreadCount(data?.unread_count ?? 0);
+      } catch (error) {
+        console.error('Failed to load unread notification count', error);
+      }
+    };
+
+    fetchUnreadCount();
+
+    const handleCountUpdated = (event: Event) => {
+      const customEvent = event as CustomEvent<number>;
+      if (typeof customEvent.detail === 'number') {
+        setUnreadCount(customEvent.detail);
+      }
+    };
+
+    window.addEventListener('notificationUnreadCountUpdated', handleCountUpdated);
+    return () => window.removeEventListener('notificationUnreadCountUpdated', handleCountUpdated);
+  }, [role]);
 
   const candidateLinks = [
   {
@@ -55,7 +94,8 @@ export function Sidebar({
   {
     to: '/candidate/notifications',
     icon: BellIcon,
-    label: 'Notifications'
+    label: 'Notifications',
+    badge: unreadCount
   }];
 
   const panelLinks = [
@@ -77,7 +117,8 @@ export function Sidebar({
   {
     to: '/panel/notifications',
     icon: BellIcon,
-    label: 'Notifications'
+    label: 'Notifications',
+    badge: unreadCount
   }];
 
   const adminLinks = [
@@ -267,6 +308,12 @@ export function Sidebar({
                         </motion.span>
                   }
                     </AnimatePresence>
+                    {link.badge > 0 && (
+                      <span
+                        className={`ml-auto ${effectiveCollapsed ? 'w-2.5 h-2.5 rounded-full bg-primary' : 'inline-flex items-center justify-center min-w-[1.4rem] h-6 rounded-full bg-primary/10 text-primary text-[11px] font-semibold'}`}>
+                        {!effectiveCollapsed && link.badge}
+                      </span>
+                    )}
                   </NavLink>
               )}
               </nav>

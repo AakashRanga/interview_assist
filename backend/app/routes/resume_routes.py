@@ -14,6 +14,8 @@ from app.models.candidate_application import CandidateApplication
 from app.models.job_role import JobRole
 from app.models.interview_schedule import InterviewSchedule
 from app.models.user import User
+from app.services.notification_service import NotificationService
+from app.models.notification import ActivityType, NotificationType
 
 router = APIRouter()
 
@@ -195,14 +197,38 @@ async def upload_candidate_document(
         stored_path = f"/uploads/{save_name}"
         if doc_type == "resume":
             candidate.resume_path = stored_path
+            activity_type = ActivityType.RESUME_UPLOADED
+            activity_title = "Resume Uploaded"
         else:
             certificates = _safe_list(candidate.certificates)
             certificates.append(stored_path)
             candidate.certificates = ",".join(certificates)
+            activity_type = ActivityType.CERTIFICATE_UPLOADED
+            activity_title = "Certificate Uploaded"
 
         db.add(candidate)
         db.commit()
         db.refresh(candidate)
+
+        # Create notification
+        try:
+            NotificationService.create_activity_and_notify(
+                db=db,
+                candidate_id=candidate.id,
+                user_id=user_id,
+                activity_type=activity_type,
+                activity_title=activity_title,
+                notification_title=activity_title,
+                notification_message=f"Your {doc_type} has been successfully uploaded.",
+                reference_id=None,
+                notification_type=NotificationType.SUCCESS,
+                icon="upload",
+                priority="medium",
+                redirect_url=f"/profile"
+            )
+        except Exception as notif_error:
+            # Log but don't fail the upload if notification creation fails
+            print(f"Failed to create notification: {notif_error}")
 
         return {
             "status": "success",
@@ -517,6 +543,24 @@ def update_candidate_profile(user_id: int, data: CandidateProfileUpdateRequest):
         db.add(user)
         db.commit()
 
+        # Create notification for profile update
+        try:
+            NotificationService.create_activity_and_notify(
+                db=db,
+                candidate_id=candidate.id,
+                user_id=user_id,
+                activity_type=ActivityType.PROFILE_UPDATED,
+                activity_title="Profile Updated",
+                notification_title="Profile Updated",
+                notification_message="Your profile has been successfully updated.",
+                notification_type=NotificationType.SUCCESS,
+                icon="edit",
+                priority="medium",
+                redirect_url=f"/profile"
+            )
+        except Exception as notif_error:
+            print(f"Failed to create notification: {notif_error}")
+
         return {
             "status": "success",
             "message": "Profile updated successfully",
@@ -722,6 +766,25 @@ def apply_role(candidate_id: int, data: ApplyRoleRequest):
         db.commit()
         db.refresh(application)
 
+        # Create notification for application submission
+        try:
+            NotificationService.create_activity_and_notify(
+                db=db,
+                candidate_id=candidate.id,
+                user_id=candidate.user_id,
+                activity_type=ActivityType.APPLICATION_SUBMITTED,
+                activity_title=f"Applied for {role.title}",
+                notification_title="Application Submitted",
+                notification_message=f"Your application for {role.title} has been submitted successfully.",
+                reference_id=application.id,
+                notification_type=NotificationType.SUCCESS,
+                icon="send",
+                priority="high",
+                redirect_url=f"/applications/{application.id}"
+            )
+        except Exception as notif_error:
+            print(f"Failed to create notification: {notif_error}")
+
         return {
             "status": "success",
             "message": "Application submitted successfully",
@@ -775,6 +838,25 @@ def apply_role_by_user(user_id: int, data: ApplyRoleRequest):
         db.add(candidate)
         db.commit()
         db.refresh(application)
+
+        # Create notification for application
+        try:
+            NotificationService.create_activity_and_notify(
+                db=db,
+                candidate_id=candidate.id,
+                user_id=user_id,
+                activity_type=ActivityType.APPLICATION_SUBMITTED,
+                activity_title=f"Applied for {role.title}",
+                notification_title="Application Submitted",
+                notification_message=f"Your application for {role.title} has been submitted successfully.",
+                reference_id=application.id,
+                notification_type=NotificationType.SUCCESS,
+                icon="send",
+                priority="high",
+                redirect_url=f"/applications/{application.id}"
+            )
+        except Exception as notif_error:
+            print(f"Failed to create notification: {notif_error}")
 
         return {
             "status": "success",

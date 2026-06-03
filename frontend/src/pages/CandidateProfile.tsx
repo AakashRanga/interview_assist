@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { DashboardLayout } from '../components/dashboard/DashboardLayout';
@@ -269,6 +269,57 @@ export function CandidateProfile() {
     return `${API_BASE_URL}${path}`;
   };
 
+  const countFilled = (value?: string | null) =>
+    value && value.trim().length > 0 ? 1 : 0;
+
+  const calculateCompletion = () => {
+    const personalComplete =
+      countFilled(personalInfo.fullName) &&
+      countFilled(personalInfo.email) &&
+      countFilled(personalInfo.phone) &&
+      countFilled(personalInfo.location);
+
+    const hasEducation = educationList.some(
+      (edu) =>
+        countFilled(edu.degree) ||
+        countFilled(edu.university) ||
+        countFilled(edu.graduationYear) ||
+        countFilled(edu.gpa)
+    );
+    const hasExperience = experienceList.some(
+      (exp) =>
+        countFilled(exp.currentRole) ||
+        countFilled(exp.company) ||
+        countFilled(exp.years) ||
+        countFilled(exp.summary)
+    );
+    const hasSkills = skills.length > 0;
+    const hasDocuments = resume?.path || resume?.file || certificates.length > 0;
+    const hasLinks =
+      countFilled(links.portfolio) ||
+      countFilled(links.linkedin) ||
+      countFilled(links.github);
+
+    const sections = [
+      personalComplete ? 1 : 0,
+      hasEducation ? 1 : 0,
+      hasExperience ? 1 : 0,
+      hasSkills ? 1 : 0,
+      hasDocuments ? 1 : 0,
+      hasLinks ? 1 : 0
+    ];
+
+    const totalSections = sections.length;
+    const filledSections = sections.reduce((sum, value) => sum + value, 0);
+
+    return Math.min(100, Math.round((filledSections / totalSections) * 100));
+  };
+
+  const profileCompletion = useMemo(
+    () => calculateCompletion(),
+    [personalInfo, educationList, experienceList, skills, resume, certificates, links]
+  );
+
   const handleResumeUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -508,13 +559,32 @@ export function CandidateProfile() {
         }}
         className="mb-8">
         
-        <h1 className="text-3xl font-bold text-secondary mb-2">
-          Complete Your Profile
-        </h1>
-        <p className="text-sm text-secondary/70">
-          Fill in your details and upload documents to schedule your
-          interview
-        </p>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-secondary mb-2">
+              Complete Your Profile
+            </h1>
+            <p className="text-sm text-secondary/70">
+              Fill in your details and upload documents to schedule your
+              interview
+            </p>
+          </div>
+          <div className="text-right">
+            <div className="text-sm text-secondary/60 mb-2">Profile completion</div>
+            <div className="flex items-center gap-3">
+              <div className="w-48 h-2.5 bg-white/60 rounded-full overflow-hidden">
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: `${profileCompletion}%` }}
+                  className="h-full bg-primary"
+                />
+              </div>
+              <span className="text-sm font-semibold text-secondary">
+                {profileCompletion}%
+              </span>
+            </div>
+          </div>
+        </div>
       </motion.div>
 
       <div className="grid lg:grid-cols-4 gap-6">

@@ -8,12 +8,14 @@ from sqlalchemy import text
 from app.routes.resume_routes import router as resume_router
 from app.routes.auth_routes import router as auth_router
 from app.routes.admin_routes import router as admin_router
+from app.routes.notification_routes import router as notification_router
 
 from app.database import engine, SessionLocal, Base
 from app.models.candidate import Candidate, CandidateEducation, CandidateExperience
 from app.models.job_role import JobRole
 from app.models.user import User
 from app.models.interview_schedule import InterviewSchedule
+from app.models.notification import CandidateActivity, Notification
 
 Base.metadata.create_all(bind=engine)
 
@@ -162,6 +164,7 @@ app.mount("/uploads", StaticFiles(directory=str(UPLOAD_DIR)), name="uploads")
 app.include_router(auth_router)
 app.include_router(resume_router)
 app.include_router(admin_router)
+app.include_router(notification_router)
 
 @app.get("/")
 def home():

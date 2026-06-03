@@ -18,8 +18,8 @@ import {
   MailIcon } from
 'lucide-react';
 export function CandidateDashboard() {
-  const [fullName, setFullName] = React.useState('John Doe');
-  const [firstName, setFirstName] = React.useState('John');
+  const [fullName, setFullName] = useState('John Doe');
+  const [firstName, setFirstName] = useState('John');
 
   React.useEffect(() => {
     const userStr = localStorage.getItem('user');
@@ -36,9 +36,78 @@ export function CandidateDashboard() {
     }
   }, []);
 
-  const profileCompletion = 85;
   const [dashboardData, setDashboardData] = React.useState<any>(null);
+  const [notifications, setNotifications] = React.useState<any[]>([]);
   const [loading, setLoading] = React.useState(true);
+
+  const calculateCompletionFromCandidate = (candidate: any) => {
+    if (!candidate) return 0;
+    const countFilled = (value: any) =>
+      value && String(value).trim().length > 0 ? 1 : 0;
+
+    const personalCount =
+      countFilled(candidate.full_name) +
+      countFilled(candidate.email) +
+      countFilled(candidate.phone) +
+      countFilled(candidate.location);
+
+    const hasEducation =
+      Array.isArray(candidate.education) &&
+      candidate.education.some(
+        (edu: any) =>
+          String(edu.degree || '').trim() ||
+          String(edu.university || '').trim() ||
+          String(edu.graduation_year || '').trim() ||
+          String(edu.gpa || '').trim()
+      );
+    const hasExperience =
+      Array.isArray(candidate.experience) &&
+      candidate.experience.some(
+        (exp: any) =>
+          String(exp.current_role || '').trim() ||
+          String(exp.company || '').trim() ||
+          String(exp.years_experience || '').trim() ||
+          String(exp.summary || '').trim()
+      );
+    const hasSkills = Array.isArray(candidate.skills) && candidate.skills.length > 0;
+    const linksCount =
+      countFilled(candidate.links?.portfolio) +
+      countFilled(candidate.links?.linkedin) +
+      countFilled(candidate.links?.github);
+    const resumeCount = countFilled(candidate.documents?.resume_path);
+    const certificateCount =
+      Array.isArray(candidate.documents?.certificates) && candidate.documents.certificates.length > 0
+        ? 1
+        : 0;
+
+    const totalPoints = 11;
+    const filledPoints =
+      personalCount +
+      (hasEducation ? 1 : 0) +
+      (hasExperience ? 1 : 0) +
+      (hasSkills ? 1 : 0) +
+      resumeCount +
+      certificateCount +
+      linksCount;
+
+    return Math.min(100, Math.round((filledPoints / totalPoints) * 100));
+  };
+
+  const profileCompletion = calculateCompletionFromCandidate(dashboardData?.candidate);
+
+  const formatIndiaTime = (timestamp: string) => {
+    const date = new Date(timestamp);
+    return new Intl.DateTimeFormat('en-IN', {
+      timeZone: 'Asia/Kolkata',
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+      timeZoneName: 'short'
+    }).format(date);
+  };
 
   React.useEffect(() => {
     const userStr = localStorage.getItem('user');
@@ -56,6 +125,13 @@ export function CandidateDashboard() {
               console.error(err);
               setLoading(false);
             });
+
+          fetch(`${API_BASE_URL}/user/${u.id}/notifications?limit=4&offset=0`)
+            .then(res => res.json())
+            .then(data => {
+              setNotifications(data?.data ?? []);
+            })
+            .catch(err => console.error(err));
         } else {
           setLoading(false);
         }
@@ -358,31 +434,23 @@ export function CandidateDashboard() {
                 Recent Notifications
               </h3>
               <div className="space-y-2.5">
-                {[
-                {
-                  message: 'Interview scheduled for May 15',
-                  time: '2 hours ago'
-                },
-                {
-                  message: 'Profile viewed by HR Panel',
-                  time: '5 hours ago'
-                },
-                {
-                  message: 'Document uploaded successfully',
-                  time: '1 day ago'
-                },
-                {
-                  message: 'Applied: Senior Frontend Dev',
-                  time: '2 days ago'
-                }].
-                map((notif, index) =>
-                <div key={index} className="p-2.5 bg-white/60 rounded-lg">
-                    <div className="text-xs text-secondary mb-0.5">
-                      {notif.message}
+                {notifications.length > 0 ? (
+                  notifications.map((notif, index) => (
+                    <div key={notif.id} className="p-2.5 bg-white/60 rounded-lg">
+                      <div className="text-xs text-secondary mb-0.5 font-semibold">
+                        {notif.title}
+                      </div>
+                      <div className="text-xs text-secondary mb-1">
+                        {notif.message}
+                      </div>
+                      <div className="text-[10px] text-secondary/60">
+                        {formatIndiaTime(notif.created_at)}
+                      </div>
                     </div>
-                    <div className="text-[10px] text-secondary/60">
-                      {notif.time}
-                    </div>
+                  ))
+                ) : (
+                  <div className="p-2.5 bg-white/60 rounded-lg text-center text-sm text-secondary/60">
+                    No recent notifications
                   </div>
                 )}
               </div>

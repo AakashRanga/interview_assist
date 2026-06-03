@@ -6,6 +6,8 @@ from app.models.user import User
 from app.models.candidate import Candidate
 from app.models.candidate_application import CandidateApplication
 from app.models.interview_schedule import InterviewSchedule
+from app.services.notification_service import NotificationService
+from app.models.notification import ActivityType, NotificationType
 from app.workers.tasks import schedule_interview_task
 from datetime import datetime, date, time, timedelta
 from zoneinfo import ZoneInfo
@@ -242,6 +244,24 @@ def schedule_interview(data: ScheduleInterviewRequest):
             application.status = "Scheduled"
             db.add(application)
             db.commit()
+
+            try:
+                NotificationService.create_activity_and_notify(
+                    db=db,
+                    candidate_id=candidate.id,
+                    user_id=candidate.user_id,
+                    activity_type=ActivityType.INTERVIEW_SCHEDULED,
+                    activity_title=f"Interview scheduled for {application.role.title if application.role else 'your role'}",
+                    notification_title="Interview Scheduled",
+                    notification_message=f"Your interview has been scheduled for {target_date} from {start_time} to {end_time}.",
+                    reference_id=application.id,
+                    notification_type=NotificationType.SUCCESS,
+                    icon="calendar",
+                    priority="high",
+                    redirect_url=f"/applications/{application.id}"
+                )
+            except Exception as notif_error:
+                print(f"Failed to create notification: {notif_error}")
 
         # Step 5: Queue Celery task
         schedule_interview_task.delay(schedule.id, data.candidate_id)
