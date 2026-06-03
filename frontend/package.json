@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
 
-  "homepage": "https://github.com/AakashRanga/interview_assist.git",
+  "homepage": "https://aakashranga.github.io/interview_assist",
 
   "scripts": {
     "dev": "npx vite",
