@@ -26,24 +26,11 @@ jobs:
           node-version: '24'
           cache-dependency-path: 'frontend/package-lock.json'
 
-      - name: Install Google Chrome
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y wget gnupg
-          wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
-          echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" | sudo tee /etc/apt/sources.list.d/google-chrome.list
-          sudo apt-get update
-          sudo apt-get install -y google-chrome-stable
-
-      - name: Install ChromeDriver
-        run: |
-          CHROME_VERSION=$(google-chrome --version | awk '{print $2}' | cut -d'.' -f1)
-          LATEST_CHROMEDRIVER=$(curl -s "https://chromedriver.storage.googleapis.com/LATEST_RELEASE_${CHROME_VERSION}")
-          wget -q "https://chromedriver.storage.googleapis.com/${LATEST_CHROMEDRIVER}/chromedriver_linux64.zip" -O chromedriver.zip
-          unzip -q chromedriver.zip
-          sudo mv chromedriver /usr/local/bin/chromedriver
-          sudo chmod +x /usr/local/bin/chromedriver
-          rm chromedriver.zip
+      - name: Setup Chrome and ChromeDriver
+        uses: browser-actions/setup-chrome@v3
+        with:
+          chrome-version: stable
+          install-chromedriver: true
 
       - name: Install frontend dependencies
         working-directory: ./frontend
@@ -53,6 +40,8 @@ jobs:
         working-directory: ./frontend/selenium-tests
         run: npm ci
 
+        
+
       - name: Create test-results directory if it doesn't exist
         run: mkdir -p frontend/selenium-tests/test-results frontend/selenium-tests/reports
 
@@ -61,8 +50,6 @@ jobs:
         run: npm run candidate-e2e || true
         env:
           CI: true
-          CHROME_BIN: /usr/bin/google-chrome
-          CHROMEDRIVER_PATH: /usr/local/bin/chromedriver
 
       - name: Upload test reports
         if: always()
