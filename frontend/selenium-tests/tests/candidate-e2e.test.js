@@ -14,7 +14,7 @@ require('chromedriver');
 const reportGenerator = require('../reportGenerator');
 
 // Test configuration
-const BASE_URL = 'https://aakashranga.github.io/interview_assist/';
+const BASE_URL = 'http://localhost:8189/interview_assist/';
 const TEST_USER = {
   email: `testcandidate${Date.now()}@example.com`,
   fullName: 'Test Candidate',
@@ -53,10 +53,13 @@ describe('Candidate E2E Workflow', function() {
       const options = new chrome.Options();
 
       // Add options for CI/headless environment
-      options.addArguments('--headless');
-      options.addArguments('--no-sandbox');
-      options.addArguments('--disable-dev-shm-usage');
-      options.addArguments('--disable-gpu');
+      const isCI = process.env.CI === 'true';
+      if (isCI) {
+        options.addArguments('--headless');
+        options.addArguments('--no-sandbox');
+        options.addArguments('--disable-dev-shm-usage');
+        options.addArguments('--disable-gpu');
+      }
       options.addArguments('--window-size=1920,1080');
 
       driver = await new Builder()
@@ -65,7 +68,7 @@ describe('Candidate E2E Workflow', function() {
         .build();
       await driver.manage().window().maximize();
       await driver.manage().setTimeouts({ implicit: 10000, pageLoad: 30000 });
-      log('WebDriver initialized successfully in headless mode');
+      log(`WebDriver initialized successfully in ${isCI ? 'headless' : 'headed'} mode`);
     } catch (error) {
       log(`WebDriver init error: ${error.message}`);
     }

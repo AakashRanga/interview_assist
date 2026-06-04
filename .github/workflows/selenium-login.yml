@@ -27,7 +27,7 @@ jobs:
           cache-dependency-path: 'frontend/package-lock.json'
 
       - name: Setup Chrome and ChromeDriver
-        uses: browser-actions/setup-chrome@v3
+        uses: browser-actions/setup-chrome@v2
         with:
           chrome-version: stable
           install-chromedriver: true
