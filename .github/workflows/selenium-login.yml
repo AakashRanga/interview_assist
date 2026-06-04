@@ -58,6 +58,8 @@ jobs:
         run: npm run candidate-e2e
         env:
           CI: true
+          CHROME_BIN: /usr/bin/google-chrome
+          CHROMEDRIVER_PATH: /usr/local/bin/chromedriver
 
       - name: Create test-results directory if it doesn't exist
         run: mkdir -p frontend/selenium-tests/test-results frontend/selenium-tests/reports

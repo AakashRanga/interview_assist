@@ -17,6 +17,8 @@ class ReportGenerator {
       endTime: null
     };
     this.logFolder = path.join(__dirname, 'logs');
+    this.testResultsFolder = path.join(__dirname, 'test-results');
+    this.reportsFolder = path.join(__dirname, 'reports');
   }
 
   init() {
@@ -25,6 +27,16 @@ class ReportGenerator {
     if (!fs.existsSync(this.logFolder)) {
       fs.mkdirSync(this.logFolder, { recursive: true });
       console.log(`[REPORT] Created log folder: ${this.logFolder}`);
+    }
+    // Create test-results folder if not exists
+    if (!fs.existsSync(this.testResultsFolder)) {
+      fs.mkdirSync(this.testResultsFolder, { recursive: true });
+      console.log(`[REPORT] Created test-results folder: ${this.testResultsFolder}`);
+    }
+    // Create reports folder if not exists
+    if (!fs.existsSync(this.reportsFolder)) {
+      fs.mkdirSync(this.reportsFolder, { recursive: true });
+      console.log(`[REPORT] Created reports folder: ${this.reportsFolder}`);
     }
   }
 
@@ -237,15 +249,23 @@ class ReportGenerator {
     // Save the workbook
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const fileName = `E2E_Test_Report_${timestamp}.xlsx`;
-    const filePath = path.join(this.logFolder, fileName);
+    const logFilePath = path.join(this.logFolder, fileName);
+    const testResultsFilePath = path.join(this.testResultsFolder, fileName);
+    const reportsFilePath = path.join(this.reportsFolder, fileName);
 
-    await workbook.xlsx.writeFile(filePath);
+    // Save to all three locations for CI compatibility
+    await workbook.xlsx.writeFile(logFilePath);
+    await workbook.xlsx.writeFile(testResultsFilePath);
+    await workbook.xlsx.writeFile(reportsFilePath);
 
-    console.log(`\n[REPORT] Excel report saved: ${filePath}`);
-    console.log(`[REPORT] Log folder: ${this.logFolder}`);
+    console.log(`\n[REPORT] Excel report saved: ${logFilePath}`);
+    console.log(`[REPORT] Test results saved: ${testResultsFilePath}`);
+    console.log(`[REPORT] Reports folder: ${reportsFilePath}`);
 
     return {
-      filePath,
+      filePath: logFilePath,
+      testResultsPath: testResultsFilePath,
+      reportsPath: reportsFilePath,
       fileName,
       total,
       passed: this.testResults.passed.length,
