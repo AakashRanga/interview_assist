@@ -1,53 +1,99 @@
+/**
+ * Login E2E Test
+ * Tests the login functionality
+ *
+ * Run with: npm run login
+ */
+
 const { Builder, By, until } = require('selenium-webdriver');
 require('chromedriver');
+const reportGenerator = require('../reportGenerator');
 
-describe('Login Test', function () {
+const BASE_URL = 'http://localhost:8189/interview_assist';
 
-    this.timeout(30000);
+// Re-export reporter functions
+const log = (message, level) => reportGenerator.log(message, level);
+const addResult = (testName, passed, error) => reportGenerator.addResult(testName, passed, error);
 
-    let driver;
+describe('Login Test', function() {
+  this.timeout(60000);
 
-    before(async () => {
-        driver = await new Builder()
-            .forBrowser('chrome')
-            .build();
-    });
+  let driver;
 
-    after(async () => {
-        await driver.quit();
-    });
+  before(async () => {
+    reportGenerator.init();
+    log('Initializing WebDriver...');
+    driver = await new Builder()
+      .forBrowser('chrome')
+      .build();
+    await driver.manage().window().maximize();
+    log('WebDriver initialized');
+  });
 
-    it('should login successfully', async () => {
+  after(async () => {
+    if (driver) {
+      await driver.quit();
+    }
+    const report = await reportGenerator.generateAndPrint();
+    if (report.failed > 0) {
+      process.exit(1);
+    }
+  });
 
-        await driver.get('https://aakashranga.github.io/interview_assist/login');
+  it('should login successfully with existing account', async () => {
+    try {
+      log('Starting login test...');
 
-        // Wait for email field
-        await driver.wait(
-            until.elementLocated(By.id('email')),
-            10000
-        );
+      // Navigate to login page
+      await driver.get(`${BASE_URL}/#/login`);
+      log('Navigated to login page');
 
-        // Enter email
-        await driver.findElement(By.id('email'))
-            .sendKeys('admin@gmail.com');
+      // Wait for form to load
+      await driver.wait(until.elementLocated(By.css('form')), 15000);
+      log('Login form loaded');
 
-        // Enter password
-        await driver.findElement(By.id('password'))
-            .sendKeys('123456');
+      // Find email and password inputs - use CSS selector for form inputs
+      const inputs = await driver.findElements(By.css('form input'));
+      log(`Found ${inputs.length} input fields`);
 
-        // Click login button
-        await driver.findElement(
-            By.css('button[type="submit"]')
-        ).click();
+      if (inputs.length < 2) {
+        throw new Error('Expected at least 2 input fields (email, password)');
+      }
 
-        // Wait for dashboard
-        await driver.wait(
-            until.urlContains('dashboard'),
-            10000
-        );
+      // Fill in credentials - order: email, password
+      await inputs[0].sendKeys('akashranga27@gmail.com');
+      log('Entered email');
 
-        console.log("Login successful");
+      await inputs[1].sendKeys('123456');
+      log('Entered password');
 
-    });
+      // Click login button
+      log('Clicking login button...');
+      const buttons = await driver.findElements(By.css('form button'));
+      for (const button of buttons) {
+        const text = await button.getText();
+        if (text.toLowerCase().includes('sign') || text.toLowerCase().includes('in')) {
+          await button.click();
+          log(`Clicked button: ${text}`);
+          break;
+        }
+      }
 
+      // Wait for dashboard
+      await driver.wait(until.urlContains('dashboard'), 15000);
+      log('Redirected to dashboard');
+
+      const currentUrl = await driver.getCurrentUrl();
+      if (currentUrl.includes('dashboard')) {
+        addResult('Login - successful login', true);
+        log('Login test PASSED');
+      } else {
+        addResult('Login - successful login', false, `Unexpected URL: ${currentUrl}`);
+      }
+
+    } catch (error) {
+      addResult('Login - successful login', false, error.message);
+      throw error;
+    }
+  });
 });

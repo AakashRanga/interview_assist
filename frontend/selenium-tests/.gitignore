@@ -1,0 +1,9 @@
+# Logs folder - contains test reports
+logs/
+
+# Node modules (already ignored but just in case)
+node_modules/
+
+# OS files
+.DS_Store
+Thumbs.db
