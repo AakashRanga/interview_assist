@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { Login } from './pages/Login';
@@ -22,7 +22,7 @@ import { Landing } from './pages/Landing';
 export function App() {
   return (
     <ThemeProvider>
-      <BrowserRouter basename="/interview_assist">
+      <HashRouter>
         <Toaster position="top-right" />
         <Routes>
           <Route path="/" element={<Landing />} />
@@ -54,7 +54,7 @@ export function App() {
 
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
-      </BrowserRouter>
+      </HashRouter>
     </ThemeProvider>);
 
 }
