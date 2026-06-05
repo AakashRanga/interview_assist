@@ -14,7 +14,7 @@ require('chromedriver');
 const reportGenerator = require('../reportGenerator');
 
 // Test configuration
-const BASE_URL = 'http://localhost:8189/interview_assist/';
+const BASE_URL = 'https://aakashranga.github.io/interview_assist/';
 const TEST_USER = {
   email: `testcandidate${Date.now()}@example.com`,
   fullName: 'Test Candidate',
