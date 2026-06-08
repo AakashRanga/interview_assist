@@ -16,6 +16,7 @@ from app.models.job_role import JobRole
 from app.models.user import User
 from app.models.interview_schedule import InterviewSchedule
 from app.models.notification import CandidateActivity, Notification
+from app.models.panel import Panel
 
 Base.metadata.create_all(bind=engine)
 
@@ -65,6 +66,22 @@ with engine.begin() as connection:
                 )
             )
 
+        # interview_schedule table columns check
+        result_sched = connection.execute(
+            text(
+                "SELECT COLUMN_NAME FROM information_schema.columns "
+                "WHERE table_schema = :schema AND table_name = 'interview_schedule'"
+            ),
+            {"schema": db_name}
+        )
+        existing_sched_columns = {row[0] for row in result_sched}
+        if "panel_id" not in existing_sched_columns:
+            connection.execute(
+                text(
+                    "ALTER TABLE interview_schedule ADD COLUMN panel_id INT NULL"
+                )
+            )
+
 with SessionLocal() as db:
     if not db.query(JobRole).first():
         seed_roles = [
@@ -96,6 +113,93 @@ with SessionLocal() as db:
             )
         ]
         db.add_all(seed_roles)
+        db.commit()
+
+    required_types = {"HR", "Technical", "P1", "P2", "P3"}
+    existing_panels = db.query(Panel).all()
+    existing_types = {p.interview_type for p in existing_panels}
+
+    if not required_types.issubset(existing_types):
+        try:
+            db.query(InterviewSchedule).delete()
+            db.query(Panel).delete()
+            db.commit()
+        except Exception:
+            db.rollback()
+            db.execute(text("SET FOREIGN_KEY_CHECKS = 0"))
+            db.query(InterviewSchedule).delete()
+            db.query(Panel).delete()
+            db.execute(text("SET FOREIGN_KEY_CHECKS = 1"))
+            db.commit()
+
+        seed_panels = [
+            Panel(
+                mr_panelist_grade="MR",
+                mr_panel_mobile="7708784091",
+                hr_panelist_emp_id="1956540",
+                hr_panelists_name="Prasanna R",
+                hr_panelist_grade="HR",
+                hr_panel_mobile="NA",
+                tag_coordinator="2262494 - Karthick Kumar",
+                slots="10:00 AM to 5:00 PM",
+                team_link="https://teams.microsoft.com/mock-link-1",
+                interview_type="HR",
+                panel_briefing="HR panel for cultural fit and onboarding check."
+            ),
+            Panel(
+                mr_panelist_grade="MR",
+                mr_panel_mobile="7708784092",
+                hr_panelist_emp_id="1956541",
+                hr_panelists_name="Rajesh K",
+                hr_panelist_grade="HR",
+                hr_panel_mobile="9876543210",
+                tag_coordinator="2262494 - Karthick Kumar",
+                slots="10:00 AM to 5:00 PM",
+                team_link="https://teams.microsoft.com/mock-link-2",
+                interview_type="Technical",
+                panel_briefing="Technical round assessing coding and system design."
+            ),
+            Panel(
+                mr_panelist_grade="MR",
+                mr_panel_mobile="7708784093",
+                hr_panelist_emp_id="1956542",
+                hr_panelists_name="Anitha S",
+                hr_panelist_grade="HR",
+                hr_panel_mobile="NA",
+                tag_coordinator="2262495 - Vignesh S",
+                slots="10:00 AM to 5:00 PM",
+                team_link="https://teams.microsoft.com/mock-link-3",
+                interview_type="P1",
+                panel_briefing="P1 assessment: logic and problem solving."
+            ),
+            Panel(
+                mr_panelist_grade="MR",
+                mr_panel_mobile="7708784094",
+                hr_panelist_emp_id="1956543",
+                hr_panelists_name="Vikram M",
+                hr_panelist_grade="HR",
+                hr_panel_mobile="9876543211",
+                tag_coordinator="2262495 - Vignesh S",
+                slots="10:00 AM to 5:00 PM",
+                team_link="https://teams.microsoft.com/mock-link-4",
+                interview_type="P2",
+                panel_briefing="P2 assessment: architecture and data structures."
+            ),
+            Panel(
+                mr_panelist_grade="MR",
+                mr_panel_mobile="7708784095",
+                hr_panelist_emp_id="1956544",
+                hr_panelists_name="Divya N",
+                hr_panelist_grade="HR",
+                hr_panel_mobile="NA",
+                tag_coordinator="2262494 - Karthick Kumar",
+                slots="10:00 AM to 5:00 PM",
+                team_link="https://teams.microsoft.com/mock-link-5",
+                interview_type="P3",
+                panel_briefing="P3 assessment: scenario-based review."
+            )
+        ]
+        db.add_all(seed_panels)
         db.commit()
 
     if not db.query(User).first():

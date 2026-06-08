@@ -7,6 +7,7 @@ from app.models.candidate import Candidate
 from app.models.candidate_application import CandidateApplication
 from app.models.interview_schedule import InterviewSchedule
 from app.models.job_role import JobRole
+from app.models.panel import Panel
 from app.services.notification_service import NotificationService
 from app.models.notification import ActivityType, NotificationType
 from app.workers.tasks import schedule_interview_task
@@ -476,6 +477,95 @@ def update_candidate_status(candidate_id: int, data: UpdateCandidateStatusReques
             except Exception as notif_error:
                 print(f"Failed to create notification: {notif_error}")
         
+        if data.status == "Selected":
+            # Check if already scheduled to prevent duplicates
+            existing_schedules = db.query(InterviewSchedule).filter(
+                InterviewSchedule.candidate_id == candidate_id,
+                InterviewSchedule.interview_status != "cancelled"
+            ).first()
+            if existing_schedules:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Candidate has already been scheduled for interviews."
+                )
+
+            # Find next free date D starting today/tomorrow
+            IST = ZoneInfo('Asia/Kolkata')
+            now_ist = datetime.now(IST)
+            limit_time = time(10, 30)
+            if now_ist.time() > limit_time:
+                target_date = now_ist.date() + timedelta(days=1)
+            else:
+                target_date = now_ist.date()
+
+            start_t = time(11, 0)
+            end_t = time(12, 0)
+
+            while True:
+                conflict = db.query(InterviewSchedule).filter(
+                    InterviewSchedule.candidate_id == candidate_id,
+                    InterviewSchedule.date == target_date,
+                    InterviewSchedule.interview_status != "cancelled",
+                    InterviewSchedule.start_time < end_t,
+                    InterviewSchedule.end_time > start_t
+                ).first()
+                if not conflict:
+                    break
+                target_date += timedelta(days=1)
+
+            # Fetch the 5 panels
+            panels = db.query(Panel).filter(
+                Panel.interview_type.in_(["HR", "Technical", "P1", "P2", "P3"])
+            ).all()
+
+            panel_by_type = {}
+            for p in panels:
+                if p.interview_type not in panel_by_type:
+                    panel_by_type[p.interview_type] = p
+
+            job_id = application.role_id if application else None
+
+            schedules_created = []
+            for panel_type in ["HR", "Technical", "P1", "P2", "P3"]:
+                panel = panel_by_type.get(panel_type)
+                panel_id = panel.id if panel else None
+
+                schedule = InterviewSchedule(
+                    candidate_id=candidate_id,
+                    job_id=job_id,
+                    date=target_date,
+                    start_time=start_t,
+                    end_time=end_t,
+                    panel_id=panel_id,
+                    interview_status="pending"
+                )
+                db.add(schedule)
+                schedules_created.append(schedule)
+
+            db.flush()
+
+            # Schedule background tasks
+            for sched in schedules_created:
+                schedule_interview_task.delay(sched.id, candidate_id)
+
+            try:
+                NotificationService.create_activity_and_notify(
+                    db=db,
+                    candidate_id=candidate.id,
+                    user_id=candidate.user_id,
+                    activity_type=ActivityType.INTERVIEW_SCHEDULED,
+                    activity_title=f"Parallel interviews scheduled for {application.role.title if application and application.role else 'your role'}",
+                    notification_title="Interviews Scheduled",
+                    notification_message=f"Your parallel 5-panel interviews have been scheduled for {target_date} from 11:00 AM to 12:00 PM.",
+                    reference_id=application.id if application else None,
+                    notification_type=NotificationType.SUCCESS,
+                    icon="calendar",
+                    priority="high",
+                    redirect_url=f"/profile"
+                )
+            except Exception as notif_error:
+                print(f"Failed to create scheduling notification: {notif_error}")
+
         db.commit()
         return {"status": "success", "message": f"Candidate status updated to {data.status}"}
     except Exception as e:
