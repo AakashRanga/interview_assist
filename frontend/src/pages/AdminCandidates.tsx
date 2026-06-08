@@ -156,6 +156,9 @@ export function AdminCandidates() {
       toast.error(err.message || 'Error scheduling interview', {
         id: loadingToast,
       });
+    }
+  };
+
   const handleApproveReject = async (status: 'Selected' | 'Rejected', candidateId: string) => {
     try {
       const res = await fetch(`${API_BASE_URL}/admin/candidates/${candidateId}/status`, {
@@ -664,7 +667,4 @@ export function AdminCandidates() {
         viewerRole="admin" />
       
     </DashboardLayout>);
-
-}
-  }
 }

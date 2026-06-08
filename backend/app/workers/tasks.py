@@ -130,37 +130,23 @@ def schedule_interview_task(schedule_id, candidate_id):
             if response.status_code == 200:
                 try:
                     result = response.json()
-<<<<<<< HEAD
-=======
                     print("Parsed n8n response:")
                     print(result)
->>>>>>> 436e59a5904dcf5165fffc2bde7e77759d715b4e
                     if isinstance(result, list):
                         event_data = result[0] if result else {}
                     else:
                         event_data = result
                     meet_link = event_data.get("hangoutLink")
-<<<<<<< HEAD
-                except Exception as json_err:
-                    print(f"Failed to parse n8n response: {json_err}")
-        except Exception as n8n_err:
-            print(f"n8n call failed: {n8n_err}")
-=======
                 except Exception as parse_err:
                     print(f"Failed to parse n8n response: {parse_err}")
             else:
                 print(f"n8n returned status {response.status_code}: {response.text}")
         except Exception as e:
             print(f"Error calling n8n: {str(e)}")
->>>>>>> 436e59a5904dcf5165fffc2bde7e77759d715b4e
 
         # Fallback to mock link if n8n failed or returned no hangoutLink
         if not meet_link:
-<<<<<<< HEAD
-            meet_link = f"https://meet.google.com/mock-{candidate.id}"
-=======
             meet_link = f"https://meet.google.com/mock-meet-{schedule_id}"
->>>>>>> 436e59a5904dcf5165fffc2bde7e77759d715b4e
             print(f"Falling back to mock GMeet link: {meet_link}")
 
         # ============================================
