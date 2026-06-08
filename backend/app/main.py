@@ -17,7 +17,6 @@ from app.models.user import User
 from app.models.interview_schedule import InterviewSchedule
 from app.models.notification import CandidateActivity, Notification
 from app.models.panel import Panel
-from app.models.interview_task import InterviewTask
 
 Base.metadata.create_all(bind=engine)
 

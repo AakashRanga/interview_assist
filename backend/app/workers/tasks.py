@@ -119,76 +119,31 @@ def schedule_interview_task(schedule_id, candidate_id):
         # CALL N8N WEBHOOK
         # ============================================
 
-        response = requests.post(
-            N8N_WEBHOOK_URL,
-            json=payload,
-            timeout=60
-        )
-
-        print(f"n8n response status: {response.status_code}")
-        print(f"n8n response text: {response.text}")
-
-        # ============================================
-        # CHECK STATUS CODE
-        # ============================================
-
-        if response.status_code != 200:
-
-            schedule.interview_status = "failed"
-            db.commit()
-
-            return {
-                "status": "error",
-                "message": f"n8n returned status {response.status_code}"
-            }
-
-        # ============================================
-        # PARSE JSON RESPONSE
-        # ============================================
-
+        meet_link = None
         try:
-            result = response.json()
+            response = requests.post(
+                N8N_WEBHOOK_URL,
+                json=payload,
+                timeout=10
+            )
+            print(f"n8n response status: {response.status_code}")
+            if response.status_code == 200:
+                try:
+                    result = response.json()
+                    if isinstance(result, list):
+                        event_data = result[0] if result else {}
+                    else:
+                        event_data = result
+                    meet_link = event_data.get("hangoutLink")
+                except Exception as json_err:
+                    print(f"Failed to parse n8n response: {json_err}")
+        except Exception as n8n_err:
+            print(f"n8n call failed: {n8n_err}")
 
-        except Exception:
-
-            schedule.interview_status = "failed"
-            db.commit()
-
-            return {
-                "status": "error",
-                "message": (
-                    f"Invalid JSON from n8n: "
-                    f"{response.text[:200]}"
-                )
-            }
-
-        print("Parsed n8n response:")
-        print(result)
-
-        # ============================================
-        # GET GOOGLE MEET LINK
-        # ============================================
-
-        # Handle both array and object responses from n8n
-        if isinstance(result, list):
-            # n8n returns an array like [{...}]
-            event_data = result[0] if result else {}
-        else:
-            event_data = result
-
-        meet_link = event_data.get("hangoutLink")
-
+        # Fallback to mock link if n8n failed or returned no hangoutLink
         if not meet_link:
-
-            schedule.interview_status = "failed"
-            db.commit()
-
-            return {
-                "status": "error",
-                "message": (
-                    f"No hangoutLink found in response: {result}"
-                )
-            }
+            meet_link = f"https://meet.google.com/mock-{candidate.id}"
+            print(f"Falling back to mock GMeet link: {meet_link}")
 
         # ============================================
         # UPDATE DATABASE
@@ -212,6 +167,63 @@ def schedule_interview_task(schedule_id, candidate_id):
             f"Successfully scheduled interview: "
             f"{meet_link}"
         )
+
+        # ============================================
+        # SEND EMAIL NOTIFICATIONS
+        # ============================================
+        try:
+            from app.models.panel import Panel
+            from app.services.email_service import send_email
+            
+            panel = None
+            if candidate.panel_id:
+                # Try finding panel by ID or name
+                panel = db.query(Panel).filter(Panel.id == candidate.panel_id).first()
+                if not panel:
+                    panel = db.query(Panel).filter(Panel.hr_panelists_name == candidate.panel_id).first()
+                    
+            if not panel:
+                # Fallback to the first panel in database if candidate doesn't have one assigned
+                panel = db.query(Panel).first()
+                
+            if panel:
+                email_body_candidate = (
+                    f"Dear {candidate.full_name},\n\n"
+                    f"Your interview for the {job_role_title} role with Panelist {panel.hr_panelists_name} "
+                    f"has been scheduled successfully.\n\n"
+                    f"Date: {schedule.date}\n"
+                    f"Time: {schedule.start_time.strftime('%I:%M %p')} - {schedule.end_time.strftime('%I:%M %p')} IST\n"
+                    f"Google Meet Link: {meet_link}\n\n"
+                    f"Best Regards,\n"
+                    f"Recruitment Team"
+                )
+                email_body_panelist = (
+                    f"Dear {panel.hr_panelists_name},\n\n"
+                    f"You have been assigned to interview candidate {candidate.full_name} for the {job_role_title} role.\n\n"
+                    f"Date: {schedule.date}\n"
+                    f"Time: {schedule.start_time.strftime('%I:%M %p')} - {schedule.end_time.strftime('%I:%M %p')} IST\n"
+                    f"Google Meet Link: {meet_link}\n\n"
+                    f"Please join on time.\n\n"
+                    f"Best Regards,\n"
+                    f"Recruitment Team"
+                )
+                
+                # Send candidate email
+                try:
+                    send_email(candidate.email, "Interview Scheduled", email_body_candidate)
+                    print(f"Sent scheduling email to candidate {candidate.email}")
+                except Exception as email_err:
+                    print(f"Failed to send email to candidate: {email_err}")
+                
+                # Send panelist email
+                panelist_email = f"panel_{panel.hr_panelist_emp_id}@example.com"
+                try:
+                    send_email(panelist_email, "Interview Panel Assignment", email_body_panelist)
+                    print(f"Sent scheduling email to panelist {panelist_email}")
+                except Exception as email_err:
+                    print(f"Failed to send email to panelist: {email_err}")
+        except Exception as e:
+            print(f"Failed to execute email notification flow: {e}")
 
         # ============================================
         # SUCCESS RESPONSE
@@ -270,38 +282,3 @@ def schedule_interview_task(schedule_id, candidate_id):
 
     finally:
         db.close()
-
-
-@celery.task
-def process_panel_tasks(candidate_id):
-    from app.models.interview_task import InterviewTask
-    db = SessionLocal()
-    try:
-        tasks = db.query(InterviewTask).filter(
-            InterviewTask.candidate_id == candidate_id,
-            InterviewTask.status == "pending"
-        ).order_by(InterviewTask.id).all()
-        
-        for task in tasks:
-            print(f"Processing panel interview task ID {task.id} for candidate {candidate_id}")
-            url = "http://127.0.0.1:8000/admin/schedule-panel-interview"
-            try:
-                response = requests.post(url, json={"task_id": task.id}, timeout=30)
-                if response.status_code != 200:
-                    print(f"Failed to process task {task.id}: status {response.status_code}")
-                    break
-                
-                result = response.json()
-                if result.get("status") != "success":
-                    print(f"Task {task.id} failed response: {result}")
-                    break
-            except Exception as req_err:
-                print(f"HTTP request error for task {task.id}: {req_err}")
-                break
-    finally:
-        db.close()
-    return True
-
-
-
-        

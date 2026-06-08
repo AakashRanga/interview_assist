@@ -20,7 +20,6 @@ from app.models.candidate_application import CandidateApplication
 from app.models.job_role import JobRole
 from app.models.interview_schedule import InterviewSchedule
 from app.models.panel import Panel
-from app.models.interview_task import InterviewTask
 
 # Import tasks to register them with Celery
 from app.workers import tasks
