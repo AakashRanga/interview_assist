@@ -42,6 +42,12 @@ with engine.begin() as connection:
                     "ALTER TABLE job_roles ADD COLUMN venue VARCHAR(255) NULL"
                 )
             )
+        if "created_at" not in existing_columns:
+            connection.execute(
+                text(
+                    "ALTER TABLE job_roles ADD COLUMN created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP"
+                )
+            )
 
         # candidates table columns check
         result_cand = connection.execute(

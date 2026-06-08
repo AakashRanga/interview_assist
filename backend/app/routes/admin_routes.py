@@ -622,3 +622,104 @@ def reschedule_interview(candidate_id: int, data: RescheduleInterviewRequest):
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         db.close()
+
+
+# ============ Roles Management ============
+
+class AdminJobRoleResponse(BaseModel):
+    id: str
+    title: str
+    location: str
+    experience: str
+    totalVacancy: int
+    jobType: str
+    venue: Optional[str] = None
+    description: Optional[str] = None
+    createdAt: str
+
+
+class CreateJobRoleRequest(BaseModel):
+    title: str
+    location: str
+    experience: str
+    totalVacancy: int
+    jobType: str
+    venue: Optional[str] = None
+    description: Optional[str] = None
+
+
+@router.get("/roles", response_model=List[AdminJobRoleResponse])
+def get_admin_roles():
+    db = SessionLocal()
+    try:
+        roles = db.query(JobRole).order_by(JobRole.id.desc()).all()
+        result = []
+        for r in roles:
+            created_str = r.created_at.strftime("%Y-%m-%d") if r.created_at else datetime.utcnow().strftime("%Y-%m-%d")
+            result.append(
+                AdminJobRoleResponse(
+                    id=str(r.id),
+                    title=r.title,
+                    location=r.location,
+                    experience=r.experience,
+                    totalVacancy=r.total_vacancy,
+                    jobType=r.job_type,
+                    venue=r.venue,
+                    description=r.description,
+                    createdAt=created_str
+                )
+            )
+        return result
+    finally:
+        db.close()
+
+
+@router.post("/roles")
+def create_job_role(data: CreateJobRoleRequest):
+    db = SessionLocal()
+    try:
+        role = JobRole(
+            title=data.title,
+            location=data.location,
+            experience=data.experience,
+            total_vacancy=data.totalVacancy,
+            job_type=data.jobType,
+            venue=data.venue,
+            description=data.description
+        )
+        db.add(role)
+        db.commit()
+        db.refresh(role)
+        return {
+            "status": "success",
+            "message": "Job role created successfully",
+            "role_id": role.id
+        }
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db.close()
+
+
+@router.delete("/roles/{role_id}")
+def delete_job_role(role_id: int):
+    db = SessionLocal()
+    try:
+        role = db.query(JobRole).filter(JobRole.id == role_id).first()
+        if not role:
+            raise HTTPException(status_code=404, detail="Job role not found")
+        
+        db.delete(role)
+        db.commit()
+        return {
+            "status": "success",
+            "message": "Job role deleted successfully"
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db.close()
