@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, List
 from fastapi import APIRouter, HTTPException, Header
 from pydantic import BaseModel, EmailStr
 from app.database import SessionLocal
@@ -6,6 +6,7 @@ from app.models.user import User
 from app.models.candidate import Candidate
 from app.models.candidate_application import CandidateApplication
 from app.models.interview_schedule import InterviewSchedule
+from app.models.job_role import JobRole
 from app.services.notification_service import NotificationService
 from app.models.notification import ActivityType, NotificationType
 from app.workers.tasks import schedule_interview_task
@@ -272,6 +273,348 @@ def schedule_interview(data: ScheduleInterviewRequest):
             "schedule_id": schedule.id
         }
 
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db.close()
+
+
+# ============ Candidate Management ============
+
+class CandidateAdminDetail(BaseModel):
+    id: str
+    name: str
+    email: str
+    phone: Optional[str] = ""
+    role: str
+    status: str
+    interviewDate: Optional[str] = None
+    interviewTime: Optional[str] = None
+    mode: str
+    panelId: Optional[str] = ""
+    panelGroupId: Optional[str] = ""
+    profileComplete: int
+    avatar: str
+    skills: List[str]
+    experience: str
+    education: str
+    resumeUrl: Optional[str] = None
+    meetLink: Optional[str] = None
+    venue: Optional[str] = None
+    appliedDate: str
+
+
+class UpdateCandidateStatusRequest(BaseModel):
+    status: str
+
+
+class ReassignCandidatePanelRequest(BaseModel):
+    panel_id: str
+    panel_group_id: str
+
+
+class RescheduleInterviewRequest(BaseModel):
+    date: str
+    time: str
+
+
+@router.get("/candidates", response_model=List[CandidateAdminDetail])
+def get_admin_candidates():
+    db = SessionLocal()
+    try:
+        candidates = db.query(Candidate).all()
+        result = []
+        for c in candidates:
+            # 1. Fetch latest application
+            application = db.query(CandidateApplication).filter(
+                CandidateApplication.candidate_id == c.id
+            ).order_by(CandidateApplication.created_at.desc()).first()
+            
+            role_title = "No Applied Role"
+            app_status = c.status
+            applied_date_str = c.created_at.isoformat() if c.created_at else datetime.utcnow().isoformat()
+            job_type = "Online"
+            venue = None
+            job_id = None
+            
+            if application:
+                role_title = application.role.title if application.role else "Unknown Role"
+                app_status = application.status
+                applied_date_str = application.created_at.isoformat()
+                job_type = application.role.job_type if application.role else "Online"
+                venue = application.role.venue if application.role else None
+                job_id = application.role_id
+
+            # 2. Fetch latest interview schedule
+            sched_query = db.query(InterviewSchedule).filter(
+                InterviewSchedule.candidate_id == c.id
+            )
+            if job_id:
+                sched_query = sched_query.filter(InterviewSchedule.job_id == job_id)
+            schedule = sched_query.order_by(InterviewSchedule.created_at.desc()).first()
+
+            interview_date = None
+            interview_time = None
+            meet_link = None
+            
+            if schedule:
+                interview_date = schedule.date.isoformat() if schedule.date else None
+                if schedule.start_time and schedule.end_time:
+                    start_str = schedule.start_time.strftime("%I:%M %p")
+                    end_str = schedule.end_time.strftime("%I:%M %p")
+                    interview_time = f"{start_str} - {end_str}"
+                elif schedule.start_time:
+                    interview_time = schedule.start_time.strftime("%I:%M %p")
+                meet_link = schedule.gmeet_link
+
+            # 3. Calculate profileComplete
+            profile_pct = 60
+            if c.phone:
+                profile_pct += 10
+            if c.resume_path:
+                profile_pct += 10
+            if c.education_list:
+                profile_pct += 10
+            if c.experience_list:
+                profile_pct += 10
+            if profile_pct > 100:
+                profile_pct = 100
+
+            # 4. Format skills
+            skills_list = [s.strip() for s in c.skills.split(",") if s.strip()] if c.skills else []
+
+            # 5. Format experience summary
+            exp_str = "No experience listed"
+            if c.experience_list:
+                latest_exp = c.experience_list[0]
+                exp_str = f"{latest_exp.years_experience} years as {latest_exp.current_role} at {latest_exp.company}"
+
+            # 6. Format education summary
+            edu_str = "No education listed"
+            if c.education_list:
+                latest_edu = c.education_list[0]
+                edu_str = f"{latest_edu.degree} from {latest_edu.university} (Class of {latest_edu.graduation_year})"
+
+            # 7. Resume URL
+            resume_url = None
+            if c.resume_path:
+                if c.resume_path.startswith("http"):
+                    resume_url = c.resume_path
+                else:
+                    resume_url = f"http://localhost:8189{c.resume_path}"
+
+            avatar_url = f"https://api.dicebear.com/7.x/avataaars/svg?seed={c.id}"
+
+            result.append(
+                CandidateAdminDetail(
+                    id=str(c.id),
+                    name=c.full_name,
+                    email=c.email,
+                    phone=c.phone or "",
+                    role=role_title,
+                    status=app_status,
+                    interviewDate=interview_date,
+                    interviewTime=interview_time,
+                    mode=job_type,
+                    panelId=c.panel_id or "",
+                    panelGroupId=c.panel_group_id or "",
+                    profileComplete=profile_pct,
+                    avatar=avatar_url,
+                    skills=skills_list,
+                    experience=exp_str,
+                    education=edu_str,
+                    resumeUrl=resume_url,
+                    meetLink=meet_link,
+                    venue=venue,
+                    appliedDate=applied_date_str
+                )
+            )
+        return result
+    finally:
+        db.close()
+
+
+@router.put("/candidates/{candidate_id}/status")
+def update_candidate_status(candidate_id: int, data: UpdateCandidateStatusRequest):
+    db = SessionLocal()
+    try:
+        candidate = db.query(Candidate).filter(Candidate.id == candidate_id).first()
+        if not candidate:
+            raise HTTPException(status_code=404, detail="Candidate not found")
+        
+        # Update candidate status
+        candidate.status = data.status
+        db.add(candidate)
+        
+        # Also update latest application status
+        application = db.query(CandidateApplication).filter(
+            CandidateApplication.candidate_id == candidate_id
+        ).order_by(CandidateApplication.created_at.desc()).first()
+        
+        if application:
+            application.status = data.status
+            db.add(application)
+            
+            try:
+                NotificationService.create_activity_and_notify(
+                    db=db,
+                    candidate_id=candidate.id,
+                    user_id=candidate.user_id,
+                    activity_type=ActivityType.PROFILE_UPDATED,
+                    activity_title=f"Application status updated to {data.status}",
+                    notification_title="Application Status Updated",
+                    notification_message=f"Your application status for {application.role.title if application.role else 'your role'} has been updated to {data.status}.",
+                    reference_id=application.id,
+                    notification_type=NotificationType.INFO,
+                    icon="info",
+                    priority="medium",
+                    redirect_url=f"/profile"
+                )
+            except Exception as notif_error:
+                print(f"Failed to create notification: {notif_error}")
+        
+        db.commit()
+        return {"status": "success", "message": f"Candidate status updated to {data.status}"}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db.close()
+
+
+@router.put("/candidates/{candidate_id}/reassign")
+def reassign_candidate_panel(candidate_id: int, data: ReassignCandidatePanelRequest):
+    db = SessionLocal()
+    try:
+        candidate = db.query(Candidate).filter(Candidate.id == candidate_id).first()
+        if not candidate:
+            raise HTTPException(status_code=404, detail="Candidate not found")
+        
+        candidate.panel_id = data.panel_id
+        candidate.panel_group_id = data.panel_group_id
+        db.add(candidate)
+        
+        try:
+            NotificationService.create_activity_and_notify(
+                db=db,
+                candidate_id=candidate.id,
+                user_id=candidate.user_id,
+                activity_type=ActivityType.PROFILE_UPDATED,
+                activity_title="Interview Panel Assigned",
+                notification_title="Panel Assigned",
+                notification_message="An interview panel group and category have been assigned to you.",
+                reference_id=None,
+                notification_type=NotificationType.INFO,
+                icon="users",
+                priority="medium",
+                redirect_url=f"/profile"
+            )
+        except Exception as notif_error:
+            print(f"Failed to create notification: {notif_error}")
+            
+        db.commit()
+        return {"status": "success", "message": "Candidate panel reassigned successfully"}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db.close()
+
+
+@router.put("/candidates/{candidate_id}/reschedule")
+def reschedule_interview(candidate_id: int, data: RescheduleInterviewRequest):
+    db = SessionLocal()
+    try:
+        candidate = db.query(Candidate).filter(Candidate.id == candidate_id).first()
+        if not candidate:
+            raise HTTPException(status_code=404, detail="Candidate not found")
+        
+        try:
+            target_date = datetime.strptime(data.date, "%Y-%m-%d").date()
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid date format. Expected YYYY-MM-DD")
+            
+        try:
+            target_time = datetime.strptime(data.time.split()[0], "%H:%M").time()
+        except ValueError:
+            try:
+                target_time = datetime.strptime(data.time.split()[0], "%H:%M:%S").time()
+            except ValueError:
+                raise HTTPException(status_code=400, detail="Invalid time format. Expected HH:MM")
+
+        schedule = db.query(InterviewSchedule).filter(
+            InterviewSchedule.candidate_id == candidate_id,
+            InterviewSchedule.interview_status != "cancelled"
+        ).order_by(InterviewSchedule.created_at.desc()).first()
+
+        job_id = None
+        application = db.query(CandidateApplication).filter(
+            CandidateApplication.candidate_id == candidate_id
+        ).order_by(CandidateApplication.created_at.desc()).first()
+        if application:
+            job_id = application.role_id
+            
+        slot_duration = timedelta(hours=1)
+        end_time = (datetime.combine(target_date, target_time) + slot_duration).time()
+
+        if schedule:
+            schedule.date = target_date
+            schedule.start_time = target_time
+            schedule.end_time = end_time
+            schedule.interview_status = "pending"
+            db.add(schedule)
+        else:
+            schedule = InterviewSchedule(
+                candidate_id=candidate_id,
+                job_id=job_id,
+                date=target_date,
+                start_time=target_time,
+                end_time=end_time,
+                interview_status="pending"
+            )
+            db.add(schedule)
+        
+        db.commit()
+        db.refresh(schedule)
+
+        if application and application.status != "Scheduled":
+            application.status = "Scheduled"
+            db.add(application)
+            db.commit()
+
+        if candidate.status != "Scheduled":
+            candidate.status = "Scheduled"
+            db.add(candidate)
+            db.commit()
+
+        try:
+            NotificationService.create_activity_and_notify(
+                db=db,
+                candidate_id=candidate.id,
+                user_id=candidate.user_id,
+                activity_type=ActivityType.INTERVIEW_SCHEDULED,
+                activity_title=f"Interview rescheduled for {application.role.title if application and application.role else 'your role'}",
+                notification_title="Interview Rescheduled",
+                notification_message=f"Your interview has been rescheduled for {target_date} at {target_time.strftime('%I:%M %p')}.",
+                reference_id=application.id if application else None,
+                notification_type=NotificationType.SUCCESS,
+                icon="calendar",
+                priority="high",
+                redirect_url=f"/profile"
+            )
+        except Exception as notif_error:
+            print(f"Failed to create notification: {notif_error}")
+
+        schedule_interview_task.delay(schedule.id, candidate.id)
+
+        return {
+            "status": "success",
+            "message": f"Interview rescheduled to {target_date} {target_time}. n8n will generate Google Meet link.",
+            "schedule_id": schedule.id
+        }
     except HTTPException:
         raise
     except Exception as e:

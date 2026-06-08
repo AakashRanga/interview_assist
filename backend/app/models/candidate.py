@@ -21,6 +21,8 @@ class Candidate(Base):
     linkedin = Column(String(500), nullable=True)
     github = Column(String(500), nullable=True)
     preferred_location = Column(String(255), nullable=True)
+    panel_id = Column(String(100), nullable=True)
+    panel_group_id = Column(String(100), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 

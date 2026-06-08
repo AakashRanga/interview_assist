@@ -43,6 +43,28 @@ with engine.begin() as connection:
                 )
             )
 
+        # candidates table columns check
+        result_cand = connection.execute(
+            text(
+                "SELECT COLUMN_NAME FROM information_schema.columns "
+                "WHERE table_schema = :schema AND table_name = 'candidates'"
+            ),
+            {"schema": db_name}
+        )
+        existing_cand_columns = {row[0] for row in result_cand}
+        if "panel_id" not in existing_cand_columns:
+            connection.execute(
+                text(
+                    "ALTER TABLE candidates ADD COLUMN panel_id VARCHAR(100) NULL"
+                )
+            )
+        if "panel_group_id" not in existing_cand_columns:
+            connection.execute(
+                text(
+                    "ALTER TABLE candidates ADD COLUMN panel_group_id VARCHAR(100) NULL"
+                )
+            )
+
 with SessionLocal() as db:
     if not db.query(JobRole).first():
         seed_roles = [
