@@ -272,5 +272,36 @@ def schedule_interview_task(schedule_id, candidate_id):
         db.close()
 
 
+@celery.task
+def process_panel_tasks(candidate_id):
+    from app.models.interview_task import InterviewTask
+    db = SessionLocal()
+    try:
+        tasks = db.query(InterviewTask).filter(
+            InterviewTask.candidate_id == candidate_id,
+            InterviewTask.status == "pending"
+        ).order_by(InterviewTask.id).all()
+        
+        for task in tasks:
+            print(f"Processing panel interview task ID {task.id} for candidate {candidate_id}")
+            url = "http://127.0.0.1:8000/admin/schedule-panel-interview"
+            try:
+                response = requests.post(url, json={"task_id": task.id}, timeout=30)
+                if response.status_code != 200:
+                    print(f"Failed to process task {task.id}: status {response.status_code}")
+                    break
+                
+                result = response.json()
+                if result.get("status") != "success":
+                    print(f"Task {task.id} failed response: {result}")
+                    break
+            except Exception as req_err:
+                print(f"HTTP request error for task {task.id}: {req_err}")
+                break
+    finally:
+        db.close()
+    return True
+
+
 
         

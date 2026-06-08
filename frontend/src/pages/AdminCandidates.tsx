@@ -133,6 +133,32 @@ export function AdminCandidates() {
     }
   };
 
+  const handleApproveReject = async (status: string, candidate: Candidate) => {
+    setOpenMenu(null);
+    const loadingToast = toast.loading(`${status === 'Selected' ? 'Approving' : 'Rejecting'} candidate...`);
+    try {
+      const res = await fetch(`${API_BASE_URL}/admin/candidates/${candidate.id}/status`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status }),
+      });
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.detail || `Failed to update status to ${status}`);
+      }
+      toast.success(`Candidate ${status === 'Selected' ? 'Approved' : 'Rejected'} successfully`, {
+        id: loadingToast,
+      });
+      fetchCandidates();
+    } catch (err: any) {
+      toast.error(err.message || 'Error updating status', {
+        id: loadingToast,
+      });
+    }
+  };
+
   const filtered = candidates.filter((c) => {
     if (search && !c.name.toLowerCase().includes(search.toLowerCase()))
       return false;
@@ -452,6 +478,20 @@ export function AdminCandidates() {
                           }}
                           className="absolute right-4 top-full mt-1 w-44 bg-white border border-slate-200 rounded-xl shadow-xl z-20 overflow-hidden">
                           
+                            {c.status !== 'Selected' && (
+                              <button
+                                onClick={() => handleApproveReject('Selected', c)}
+                                className="w-full text-left px-3 py-2 text-xs text-green-600 hover:bg-green-50 transition-colors font-semibold">
+                                Approve
+                              </button>
+                            )}
+                            {c.status !== 'Rejected' && (
+                              <button
+                                onClick={() => handleApproveReject('Rejected', c)}
+                                className="w-full text-left px-3 py-2 text-xs text-red-600 hover:bg-red-50 transition-colors font-semibold">
+                                Reject
+                              </button>
+                            )}
                             <button
                             onClick={() => handleAction('reschedule', c)}
                             className="w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-slate-50 transition-colors">

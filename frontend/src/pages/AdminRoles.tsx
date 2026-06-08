@@ -7,7 +7,8 @@ import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import {
   BriefcaseIcon,
-  Trash2Icon,
+  EyeIcon,
+  EyeOffIcon,
   PlusIcon,
   MapPinIcon,
   ClockIcon,
@@ -99,19 +100,21 @@ export function AdminRoles() {
     }
   };
 
-  const handleDelete = async (id: string) => {
+  const handleToggleVisibility = async (id: string, currentIsVisible: boolean) => {
     try {
-      const res = await fetch(`${API_BASE_URL}/admin/roles/${id}`, {
-        method: 'DELETE'
+      const res = await fetch(`${API_BASE_URL}/admin/roles/${id}/visibility`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_visible: !currentIsVisible })
       });
       if (!res.ok) {
         const errData = await res.json();
-        throw new Error(errData.detail || 'Failed to delete job role');
+        throw new Error(errData.detail || 'Failed to update visibility');
       }
-      toast.success('Job role removed');
+      toast.success(!currentIsVisible ? 'Job role is now visible' : 'Job role is now hidden');
       fetchRoles();
     } catch (err: any) {
-      toast.error(err.message || 'Error removing job role');
+      toast.error(err.message || 'Error updating job role visibility');
     }
   };
   return (
@@ -367,11 +370,19 @@ export function AdminRoles() {
                         </td>
                         <td className="px-5 py-3 text-right">
                           <button
-                        onClick={() => handleDelete(role.id)}
-                        className="p-1.5 hover:bg-red-50 rounded-lg transition-colors group inline-flex"
-                        title="Remove role">
-                        
-                            <Trash2Icon className="w-3.5 h-3.5 text-secondary/50 group-hover:text-red-500" />
+                            onClick={() => handleToggleVisibility(role.id, !!role.isVisible)}
+                            className={`p-1.5 rounded-lg transition-colors inline-flex ${
+                              role.isVisible 
+                                ? 'hover:bg-green-50 text-emerald-600' 
+                                : 'hover:bg-slate-100 text-slate-400'
+                            }`}
+                            title={role.isVisible ? 'Hide from candidates' : 'Show to candidates'}
+                          >
+                            {role.isVisible ? (
+                              <EyeIcon className="w-4 h-4" />
+                            ) : (
+                              <EyeOffIcon className="w-4 h-4" />
+                            )}
                           </button>
                         </td>
                       </motion.tr>

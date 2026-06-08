@@ -8,6 +8,7 @@ export interface JobRole {
   description?: string;
   venue?: string;
   createdAt: string;
+  isVisible?: boolean;
 }
 
 export const seedJobRoles: JobRole[] = [

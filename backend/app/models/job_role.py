@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime
+from sqlalchemy import Column, Integer, String, DateTime, Boolean
 from datetime import datetime
 from app.database import Base
 
@@ -15,3 +15,4 @@ class JobRole(Base):
     venue = Column(String(255), nullable=True)
     description = Column(String(1000), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    is_visible = Column(Boolean, default=True, nullable=False)

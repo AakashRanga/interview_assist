@@ -10,6 +10,8 @@ from app.models.job_role import JobRole
 from app.services.notification_service import NotificationService
 from app.models.notification import ActivityType, NotificationType
 from app.workers.tasks import schedule_interview_task
+from app.models.panel import Panel
+from app.models.interview_task import InterviewTask
 from datetime import datetime, date, time, timedelta
 from zoneinfo import ZoneInfo
 
@@ -181,6 +183,80 @@ def find_available_slot(db, target_date: date = None):
     return None
 
 
+def find_5_available_slots(db):
+    """
+    Find 5 sequential, non-overlapping 1-hour slots during business hours (9 AM - 5 PM IST).
+    Checks both interview_schedule and interview_tasks to avoid double booking.
+    Returns a list of 5 dicts: [{"date": date, "start_time": time, "end_time": time}]
+    """
+    IST = ZoneInfo('Asia/Kolkata')
+    now_ist = datetime.now(IST)
+    current_date = now_ist.date()
+    
+    work_start = time(9, 0)
+    work_end = time(17, 0)
+    
+    # Decide start time for searching today
+    if now_ist.time() >= time(16, 0):
+        # Already past last slot start today, start tomorrow at 9 AM
+        current_date = current_date + timedelta(days=1)
+        current_hour = 9
+    elif now_ist.time() >= work_start:
+        # We are within the workday, start from the next hour
+        current_hour = now_ist.hour + 1
+        if current_hour < 9:
+            current_hour = 9
+    else:
+        # Before workday starts today, start at 9 AM today
+        current_hour = 9
+
+    current_dt = datetime.combine(current_date, time(current_hour, 0))
+    
+    slots = []
+    
+    # We want 5 slots
+    while len(slots) < 5:
+        slot_date = current_dt.date()
+        slot_start = current_dt.time()
+        slot_end = (current_dt + timedelta(hours=1)).time()
+        
+        # Check if the slot exceeds working hours (last slot starts at 4 PM, ends at 5 PM)
+        if slot_end > work_end:
+            # Move to next day 9 AM
+            current_dt = datetime.combine(slot_date + timedelta(days=1), work_start)
+            continue
+            
+        # Check overlap in interview_schedule
+        overlap_schedule = db.query(InterviewSchedule).filter(
+            InterviewSchedule.date == slot_date,
+            InterviewSchedule.interview_status != "cancelled",
+            InterviewSchedule.start_time < slot_end,
+            InterviewSchedule.end_time > slot_start
+        ).first()
+        
+        # Check overlap in interview_tasks
+        overlap_task = db.query(InterviewTask).filter(
+            InterviewTask.slot_date == slot_date,
+            InterviewTask.status != "failed",
+            InterviewTask.start_time < slot_end,
+            InterviewTask.end_time > slot_start
+        ).first()
+        
+        if overlap_schedule or overlap_task:
+            # Slot is occupied, advance current_dt by 1 hour and search next slot
+            current_dt = current_dt + timedelta(hours=1)
+        else:
+            # Slot is free!
+            slots.append({
+                "date": slot_date,
+                "start_time": slot_start,
+                "end_time": slot_end
+            })
+            current_dt = current_dt + timedelta(hours=1)
+            
+    return slots
+
+
 @router.post("/schedule-interview", response_model=ScheduleInterviewResponse)
 def schedule_interview(data: ScheduleInterviewRequest):
     """
@@ -321,6 +397,10 @@ class RescheduleInterviewRequest(BaseModel):
     time: str
 
 
+class SchedulePanelInterviewRequest(BaseModel):
+    task_id: int
+
+
 @router.get("/candidates", response_model=List[CandidateAdminDetail])
 def get_admin_candidates():
     db = SessionLocal()
@@ -445,6 +525,31 @@ def update_candidate_status(candidate_id: int, data: UpdateCandidateStatusReques
         if not candidate:
             raise HTTPException(status_code=404, detail="Candidate not found")
         
+        # Check if status is updated to "Selected" (approved)
+        if data.status == "Selected":
+            existing_tasks_count = db.query(InterviewTask).filter(
+                InterviewTask.candidate_id == candidate_id,
+                InterviewTask.status != "failed"
+            ).count()
+            
+            if existing_tasks_count == 0:
+                panels = db.query(Panel).order_by(Panel.id).all()
+                if len(panels) < 5:
+                    raise HTTPException(status_code=400, detail="Fewer than 5 panels registered in the database.")
+                
+                slots = find_5_available_slots(db)
+                
+                for i in range(5):
+                    task = InterviewTask(
+                        candidate_id=candidate_id,
+                        panel_id=panels[i].id,
+                        slot_date=slots[i]["date"],
+                        start_time=slots[i]["start_time"],
+                        end_time=slots[i]["end_time"],
+                        status="pending"
+                    )
+                    db.add(task)
+        
         # Update candidate status
         candidate.status = data.status
         db.add(candidate)
@@ -477,9 +582,197 @@ def update_candidate_status(candidate_id: int, data: UpdateCandidateStatusReques
                 print(f"Failed to create notification: {notif_error}")
         
         db.commit()
+
+        if data.status == "Selected":
+            try:
+                from app.workers.tasks import process_panel_tasks
+                process_panel_tasks.delay(candidate_id)
+            except Exception as celery_err:
+                print(f"Failed to trigger Celery process_panel_tasks task: {celery_err}")
+
         return {"status": "success", "message": f"Candidate status updated to {data.status}"}
     except Exception as e:
         db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db.close()
+
+
+@router.post("/schedule-panel-interview")
+def schedule_panel_interview(data: SchedulePanelInterviewRequest):
+    db = SessionLocal()
+    task = None
+    try:
+        # 1. Fetch the task
+        task = db.query(InterviewTask).filter(InterviewTask.id == data.task_id).first()
+        if not task:
+            raise HTTPException(status_code=404, detail="Interview task not found")
+            
+        if task.status in ["completed", "processing"]:
+            return {"status": "success", "message": f"Task already {task.status}"}
+            
+        # 2. Set task status to processing
+        task.status = "processing"
+        db.add(task)
+        db.commit()
+        
+        # 3. Fetch candidate, panel, job role
+        candidate = db.query(Candidate).filter(Candidate.id == task.candidate_id).first()
+        panel = db.query(Panel).filter(Panel.id == task.panel_id).first()
+        
+        if not candidate:
+            task.status = "failed"
+            db.add(task)
+            db.commit()
+            raise HTTPException(status_code=400, detail="Candidate not found for task")
+            
+        if not panel:
+            task.status = "failed"
+            db.add(task)
+            db.commit()
+            raise HTTPException(status_code=400, detail="Panel not found for task")
+
+        # Get role ID from candidate application
+        application = db.query(CandidateApplication).filter(
+            CandidateApplication.candidate_id == task.candidate_id
+        ).order_by(CandidateApplication.created_at.desc()).first()
+        
+        job_role_title = "Selected Role"
+        job_id = None
+        if application:
+            job_id = application.role_id
+            if application.role:
+                job_role_title = application.role.title
+
+        # 4. Insert schedule in interview_schedule table
+        schedule = InterviewSchedule(
+            candidate_id=task.candidate_id,
+            job_id=job_id,
+            date=task.slot_date,
+            start_time=task.start_time,
+            end_time=task.end_time,
+            interview_status="pending"
+        )
+        db.add(schedule)
+        db.commit()
+        db.refresh(schedule)
+
+        # 5. Fetch Google Meet link from n8n webhook (or fallback)
+        N8N_WEBHOOK_URL = "http://localhost:5678/webhook/schedule-interview"
+        payload = {
+            "candidate_name": candidate.full_name,
+            "email": candidate.email,
+            "job_role": job_role_title,
+            "date": task.slot_date.isoformat(),
+            "start_time": task.start_time.isoformat(),
+            "end_time": task.end_time.isoformat()
+        }
+        
+        meet_link = None
+        try:
+            import requests
+            response = requests.post(N8N_WEBHOOK_URL, json=payload, timeout=10)
+            if response.status_code == 200:
+                result = response.json()
+                if isinstance(result, list):
+                    event_data = result[0] if result else {}
+                else:
+                    event_data = result
+                meet_link = event_data.get("hangoutLink")
+        except Exception as n8n_err:
+            print(f"n8n scheduling failed: {n8n_err}")
+
+        # Fallback to mock link if n8n failed/no meet_link returned
+        if not meet_link:
+            meet_link = f"https://meet.google.com/mock-{candidate.id}-{task.panel_id}"
+
+        # 6. Update schedule with meet link
+        schedule.gmeet_link = meet_link
+        schedule.interview_status = "scheduled"
+        db.add(schedule)
+        
+        # Update candidate application status and candidate status to "Scheduled"
+        if application:
+            application.status = "Scheduled"
+            db.add(application)
+        candidate.status = "Scheduled"
+        db.add(candidate)
+        
+        # 7. Create notification for candidate
+        try:
+            NotificationService.create_activity_and_notify(
+                db=db,
+                candidate_id=candidate.id,
+                user_id=candidate.user_id,
+                activity_type=ActivityType.INTERVIEW_SCHEDULED,
+                activity_title=f"Panel Interview Scheduled",
+                notification_title="Interview Scheduled",
+                notification_message=(
+                    f"Your panel interview (Panel: {panel.hr_panelists_name}) has been scheduled "
+                    f"for {task.slot_date} at {task.start_time.strftime('%I:%M %p')} IST."
+                ),
+                reference_id=application.id if application else None,
+                notification_type=NotificationType.SUCCESS,
+                icon="calendar",
+                priority="high",
+                redirect_url="/profile"
+            )
+        except Exception as notif_err:
+            print(f"Failed to create notification: {notif_err}")
+
+        # 8. Send email notifications
+        from app.services.email_service import send_email
+        email_body_candidate = (
+            f"Dear {candidate.full_name},\n\n"
+            f"Your interview for the {job_role_title} role with Panelist {panel.hr_panelists_name} "
+            f"has been scheduled successfully.\n\n"
+            f"Date: {task.slot_date}\n"
+            f"Time: {task.start_time.strftime('%I:%M %p')} - {task.end_time.strftime('%I:%M %p')} IST\n"
+            f"Google Meet Link: {meet_link}\n\n"
+            f"Best Regards,\n"
+            f"Recruitment Team"
+        )
+        email_body_panelist = (
+            f"Dear {panel.hr_panelists_name},\n\n"
+            f"You have been assigned to interview candidate {candidate.full_name} for the {job_role_title} role.\n\n"
+            f"Date: {task.slot_date}\n"
+            f"Time: {task.start_time.strftime('%I:%M %p')} - {task.end_time.strftime('%I:%M %p')} IST\n"
+            f"Google Meet Link: {meet_link}\n\n"
+            f"Please join on time.\n\n"
+            f"Best Regards,\n"
+            f"Recruitment Team"
+        )
+        
+        # Send to candidate
+        try:
+            send_email(candidate.email, "Interview Scheduled", email_body_candidate)
+        except Exception as e:
+            print(f"Failed to send email to candidate: {e}")
+            
+        # Send to panelist (mock panelist email, e.g. panel.hr_panelist_emp_id + "@example.com")
+        panelist_email = f"panel_{panel.hr_panelist_emp_id}@example.com"
+        try:
+            send_email(panelist_email, "Interview Panel Assignment", email_body_panelist)
+        except Exception as e:
+            print(f"Failed to send email to panelist: {e}")
+
+        # 9. Mark task as completed
+        task.status = "completed"
+        db.add(task)
+        db.commit()
+        
+        return {"status": "success", "message": "Interview scheduled successfully"}
+        
+    except Exception as e:
+        db.rollback()
+        # Mark task as failed if error occurs
+        try:
+            if task:
+                task.status = "failed"
+                db.add(task)
+                db.commit()
+        except Exception:
+            pass
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         db.close()
@@ -636,6 +929,7 @@ class AdminJobRoleResponse(BaseModel):
     venue: Optional[str] = None
     description: Optional[str] = None
     createdAt: str
+    isVisible: bool
 
 
 class CreateJobRoleRequest(BaseModel):
@@ -646,6 +940,10 @@ class CreateJobRoleRequest(BaseModel):
     jobType: str
     venue: Optional[str] = None
     description: Optional[str] = None
+
+
+class ToggleVisibilityRequest(BaseModel):
+    is_visible: bool
 
 
 @router.get("/roles", response_model=List[AdminJobRoleResponse])
@@ -666,7 +964,8 @@ def get_admin_roles():
                     jobType=r.job_type,
                     venue=r.venue,
                     description=r.description,
-                    createdAt=created_str
+                    createdAt=created_str,
+                    isVisible=r.is_visible
                 )
             )
         return result
@@ -685,7 +984,8 @@ def create_job_role(data: CreateJobRoleRequest):
             total_vacancy=data.totalVacancy,
             job_type=data.jobType,
             venue=data.venue,
-            description=data.description
+            description=data.description,
+            is_visible=True
         )
         db.add(role)
         db.commit()
@@ -702,6 +1002,32 @@ def create_job_role(data: CreateJobRoleRequest):
         db.close()
 
 
+@router.put("/roles/{role_id}/visibility")
+def toggle_job_role_visibility(role_id: int, data: ToggleVisibilityRequest):
+    db = SessionLocal()
+    try:
+        role = db.query(JobRole).filter(JobRole.id == role_id).first()
+        if not role:
+            raise HTTPException(status_code=404, detail="Job role not found")
+        
+        role.is_visible = data.is_visible
+        db.add(role)
+        db.commit()
+        
+        status_text = "visible" if data.is_visible else "hidden"
+        return {
+            "status": "success",
+            "message": f"Job role visibility updated to {status_text}"
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db.close()
+
+
 @router.delete("/roles/{role_id}")
 def delete_job_role(role_id: int):
     db = SessionLocal()
@@ -710,11 +1036,13 @@ def delete_job_role(role_id: int):
         if not role:
             raise HTTPException(status_code=404, detail="Job role not found")
         
-        db.delete(role)
+        # Soft delete: set visibility to False to avoid foreign key issues
+        role.is_visible = False
+        db.add(role)
         db.commit()
         return {
             "status": "success",
-            "message": "Job role deleted successfully"
+            "message": "Job role deactivated successfully"
         }
     except HTTPException:
         raise

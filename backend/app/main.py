@@ -16,6 +16,8 @@ from app.models.job_role import JobRole
 from app.models.user import User
 from app.models.interview_schedule import InterviewSchedule
 from app.models.notification import CandidateActivity, Notification
+from app.models.panel import Panel
+from app.models.interview_task import InterviewTask
 
 Base.metadata.create_all(bind=engine)
 
@@ -46,6 +48,12 @@ with engine.begin() as connection:
             connection.execute(
                 text(
                     "ALTER TABLE job_roles ADD COLUMN created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP"
+                )
+            )
+        if "is_visible" not in existing_columns:
+            connection.execute(
+                text(
+                    "ALTER TABLE job_roles ADD COLUMN is_visible BOOLEAN NOT NULL DEFAULT TRUE"
                 )
             )
 
@@ -102,6 +110,76 @@ with SessionLocal() as db:
             )
         ]
         db.add_all(seed_roles)
+
+    if not db.query(Panel).first():
+        seed_panels = [
+            Panel(
+                mr_panelist_grade="MR",
+                mr_panel_mobile="7708784091",
+                hr_panelist_emp_id="1956540",
+                hr_panelists_name="Prasanna R",
+                hr_panelist_grade="HR",
+                hr_panel_mobile="NA",
+                tag_coordinator="2262494 - Karthick Kumar",
+                slots="10:00 AM to 5:00 PM",
+                team_link="https://teams.microsoft.com/mock-link-1",
+                interview_type="Technical",
+                panel_briefing="MR Panel for technical assessment."
+            ),
+            Panel(
+                mr_panelist_grade="MR",
+                mr_panel_mobile="7708784092",
+                hr_panelist_emp_id="1956541",
+                hr_panelists_name="Rajesh K",
+                hr_panelist_grade="HR",
+                hr_panel_mobile="9876543210",
+                tag_coordinator="2262494 - Karthick Kumar",
+                slots="10:00 AM to 5:00 PM",
+                team_link="https://teams.microsoft.com/mock-link-2",
+                interview_type="Technical",
+                panel_briefing="MR Panel for system architecture assessment."
+            ),
+            Panel(
+                mr_panelist_grade="MR",
+                mr_panel_mobile="7708784093",
+                hr_panelist_emp_id="1956542",
+                hr_panelists_name="Anitha S",
+                hr_panelist_grade="HR",
+                hr_panel_mobile="NA",
+                tag_coordinator="2262495 - Vignesh S",
+                slots="10:00 AM to 5:00 PM",
+                team_link="https://teams.microsoft.com/mock-link-3",
+                interview_type="HR",
+                panel_briefing="HR panel for cultural fit."
+            ),
+            Panel(
+                mr_panelist_grade="MR",
+                mr_panel_mobile="7708784094",
+                hr_panelist_emp_id="1956543",
+                hr_panelists_name="Vikram M",
+                hr_panelist_grade="HR",
+                hr_panel_mobile="9876543211",
+                tag_coordinator="2262495 - Vignesh S",
+                slots="10:00 AM to 5:00 PM",
+                team_link="https://teams.microsoft.com/mock-link-4",
+                interview_type="Technical",
+                panel_briefing="Technical round 2 focus on coding standards."
+            ),
+            Panel(
+                mr_panelist_grade="MR",
+                mr_panel_mobile="7708784095",
+                hr_panelist_emp_id="1956544",
+                hr_panelists_name="Divya N",
+                hr_panelist_grade="HR",
+                hr_panel_mobile="NA",
+                tag_coordinator="2262494 - Karthick Kumar",
+                slots="10:00 AM to 5:00 PM",
+                team_link="https://teams.microsoft.com/mock-link-5",
+                interview_type="Managerial",
+                panel_briefing="Managerial round for leadership assessment."
+            )
+        ]
+        db.add_all(seed_panels)
         db.commit()
 
     if not db.query(User).first():
