@@ -308,6 +308,22 @@ with SessionLocal() as db:
         db.add_all(seed_users)
         db.commit()
 
+    # Also seed users for the 5 panels so they can login
+    panels_in_db = db.query(Panel).all()
+    for p in panels_in_db:
+        if p.hr_panelist_emp_id:
+            email = f"panel_{p.hr_panelist_emp_id}@example.com"
+            existing_user = db.query(User).filter(User.email == email).first()
+            if not existing_user:
+                new_p_user = User(
+                    full_name=p.hr_panelists_name,
+                    email=email,
+                    password="panel123",
+                    role="panel"
+                )
+                db.add(new_p_user)
+    db.commit()
+
     if not db.query(Candidate).first():
         candidate_user = db.query(User).filter(User.email == 'candidate@example.com').first()
         user_id = candidate_user.id if candidate_user else 1

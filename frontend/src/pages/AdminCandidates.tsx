@@ -133,31 +133,7 @@ export function AdminCandidates() {
     }
   };
 
-  const handleScheduleCandidate = async (candidate: Candidate) => {
-    setOpenMenu(null);
-    const loadingToast = toast.loading('Scheduling interview...');
-    try {
-      const res = await fetch(`${API_BASE_URL}/admin/schedule-interview`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ candidate_id: Number(candidate.id) }),
-      });
-      if (!res.ok) {
-        const errData = await res.json();
-        throw new Error(errData.detail || 'Failed to schedule interview');
-      }
-      toast.success('Interview scheduled successfully!', {
-        id: loadingToast,
-      });
-      fetchCandidates();
-    } catch (err: any) {
-      toast.error(err.message || 'Error scheduling interview', {
-        id: loadingToast,
-      });
-    }
-  };
+
 
   const handleApproveReject = async (status: 'Selected' | 'Rejected', candidateId: string) => {
     try {
@@ -498,13 +474,7 @@ export function AdminCandidates() {
                           }}
                           className="absolute right-4 top-full mt-1 w-44 bg-white border border-slate-200 rounded-xl shadow-xl z-20 overflow-hidden">
                           
-                            {c.status !== 'Scheduled' && (
-                              <button
-                                onClick={() => handleScheduleCandidate(c)}
-                                className="w-full text-left px-3 py-2 text-xs text-primary hover:bg-primary/10 transition-colors font-semibold">
-                                Schedule
-                              </button>
-                            )}
+
                             <button
                             onClick={() => handleAction('reschedule', c)}
                             className="w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-slate-50 transition-colors">
