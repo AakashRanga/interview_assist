@@ -156,6 +156,23 @@ export function AdminCandidates() {
       toast.error(err.message || 'Error scheduling interview', {
         id: loadingToast,
       });
+  const handleApproveReject = async (status: 'Selected' | 'Rejected', candidateId: string) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/admin/candidates/${candidateId}/status`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status }),
+      });
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.detail || `Failed to update status to ${status}`);
+      }
+      toast.success(`Candidate status updated to ${status} successfully`);
+      fetchCandidates();
+    } catch (err: any) {
+      toast.error(err.message || `Error updating status to ${status}`);
     }
   };
 
@@ -503,6 +520,26 @@ export function AdminCandidates() {
                             
                               View Feedback
                             </button>
+                            {c.status !== 'Selected' && c.status !== 'Rejected' && (
+                              <>
+                                <button
+                                onClick={() => {
+                                  setOpenMenu(null);
+                                  handleApproveReject('Selected', c.id);
+                                }}
+                                className="w-full text-left px-3 py-2 text-xs text-green-600 hover:bg-green-50/50 transition-colors font-medium border-t border-slate-100">
+                                  Approve
+                                </button>
+                                <button
+                                onClick={() => {
+                                  setOpenMenu(null);
+                                  handleApproveReject('Rejected', c.id);
+                                }}
+                                className="w-full text-left px-3 py-2 text-xs text-red-600 hover:bg-red-50/50 transition-colors font-medium">
+                                  Reject
+                                </button>
+                              </>
+                            )}
                           </motion.div>
                         }
                       </td>
@@ -628,4 +665,6 @@ export function AdminCandidates() {
       
     </DashboardLayout>);
 
+}
+  }
 }
