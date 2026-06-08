@@ -150,22 +150,11 @@ def schedule_interview_task(schedule_id, candidate_id):
             print(f"Falling back to mock GMeet link: {meet_link}")
 
         # ============================================
-        # UPDATE DATABASE FOR ALL PARALLEL ROUNDS
+        # UPDATE DATABASE
         # ============================================
 
-        # Fetch all pending schedules for this candidate on the same date (to update them with the common meet link)
-        schedules = db.query(InterviewSchedule).filter(
-            InterviewSchedule.candidate_id == candidate_id,
-            InterviewSchedule.date == schedule.date,
-            InterviewSchedule.interview_status == "pending"
-        ).all()
-
-        if schedule not in schedules:
-            schedules.append(schedule)
-
-        for s in schedules:
-            s.gmeet_link = meet_link
-            s.interview_status = "scheduled"
+        schedule.gmeet_link = meet_link
+        schedule.interview_status = "scheduled"
 
         # Also update candidate_applications status to "Scheduled" if not Selected/Rejected
         application = db.query(CandidateApplication).filter(
@@ -179,69 +168,126 @@ def schedule_interview_task(schedule_id, candidate_id):
         db.commit()
 
         # ============================================
-        # DISPATCH CONSOLIDATED EMAILS (COMMON LINK)
+        # RETRIEVE PANEL AND DISPATCH EMAILS
         # ============================================
+        panel = None
+        if schedule.panel_id:
+            from app.models.panel import Panel
+            panel = db.query(Panel).filter(Panel.id == schedule.panel_id).first()
+
+        panel_type = panel.interview_type if panel else "Interview"
+
+        # Email details
         from app.services.email_service import send_email, SMTP_EMAIL, SMTP_PASSWORD
         smtp_configured = bool(SMTP_EMAIL and SMTP_PASSWORD)
 
-        # 1. Build a premium consolidated email body for the candidate
-        candidate_subject = "Your 5-Panel Interview Schedule"
+        # Candidate Email
+        candidate_subject = f"Interview Scheduled - {panel_type} Round"
         candidate_body = (
             f"Hi {candidate.full_name},\n\n"
-            f"Your 5-panel interviews have been scheduled successfully. All rounds will use the same Google Meet link.\n\n"
+            f"Your {panel_type} interview has been scheduled.\n"
             f"Date: {schedule.date}\n"
             f"Time: 11:00 AM - 12:00 PM IST\n"
-            f"Common Google Meet Link: {meet_link}\n\n"
-            f"Assigned Interview Rounds:\n"
-        )
-        for s in schedules:
-            p = s.panel
-            p_type = p.interview_type if p else "Interview"
-            p_name = p.hr_panelists_name if p else "Panelist"
-            candidate_body += f" - {p_type} Round: conducted by {p_name}\n"
-
-        candidate_body += (
-            f"\nBest regards,\n"
+            f"Google Meet Link: {meet_link}\n\n"
+            f"Best regards,\n"
             f"Recruitment Team"
         )
 
         if smtp_configured:
             try:
-                print(f"Sending consolidated email to candidate: {candidate.email}")
+                print(f"Sending email to candidate: {candidate.email}")
                 send_email(candidate.email, candidate_subject, candidate_body)
             except Exception as email_err:
                 print(f"Failed to send email to candidate: {str(email_err)}")
         else:
             print(f"SMTP not configured. Candidate Email Log:\nTo: {candidate.email}\nSubject: {candidate_subject}\nBody:\n{candidate_body}\n")
 
-        # 2. Send individual emails to each of the 5 panel members
-        for s in schedules:
-            panel = s.panel
+        # Panelist Email
+        if panel:
+            panelist_email = f"panel_{panel.hr_panelist_emp_id}@example.com" if panel.hr_panelist_emp_id else "panel@example.com"
+            panelist_subject = f"Interview Assignment - {panel_type} Round - {candidate.full_name}"
+            panelist_body = (
+                f"Hi {panel.hr_panelists_name or 'Panelist'},\n\n"
+                f"You have been assigned to conduct an interview.\n"
+                f"Candidate: {candidate.full_name}\n"
+                f"Round: {panel_type}\n"
+                f"Date: {schedule.date}\n"
+                f"Time: 11:00 AM - 12:00 PM IST\n"
+                f"Google Meet Link: {meet_link}\n\n"
+                f"Best regards,\n"
+                f"Recruitment Team"
+            )
+
+            if smtp_configured:
+                try:
+                    print(f"Sending email to panelist: {panelist_email}")
+                    send_email(panelist_email, panelist_subject, panelist_body)
+                except Exception as email_err:
+                    print(f"Failed to send email to panelist {panelist_email}: {str(email_err)}")
+            else:
+                print(f"SMTP not configured. Panelist Email Log:\nTo: {panelist_email}\nSubject: {panelist_subject}\nBody:\n{panelist_body}\n")
+
+        print(
+            f"Successfully scheduled interview: "
+            f"{meet_link}"
+        )
+
+        # ============================================
+        # SEND EMAIL NOTIFICATIONS
+        # ============================================
+        try:
+            from app.models.panel import Panel
+            from app.services.email_service import send_email
+            
+            panel = None
+            if candidate.panel_id:
+                # Try finding panel by ID or name
+                panel = db.query(Panel).filter(Panel.id == candidate.panel_id).first()
+                if not panel:
+                    panel = db.query(Panel).filter(Panel.hr_panelists_name == candidate.panel_id).first()
+                    
+            if not panel:
+                # Fallback to the first panel in database if candidate doesn't have one assigned
+                panel = db.query(Panel).first()
+                
             if panel:
-                panel_type = panel.interview_type or "Interview"
-                panelist_email = f"panel_{panel.hr_panelist_emp_id}@example.com" if panel.hr_panelist_emp_id else "panel@example.com"
-                panelist_subject = f"Interview Assignment - {panel_type} Round - {candidate.full_name}"
-                panelist_body = (
-                    f"Hi {panel.hr_panelists_name or 'Panelist'},\n\n"
-                    f"You have been assigned to conduct an interview round.\n\n"
-                    f"Candidate: {candidate.full_name}\n"
-                    f"Round: {panel_type}\n"
+                email_body_candidate = (
+                    f"Dear {candidate.full_name},\n\n"
+                    f"Your interview for the {job_role_title} role with Panelist {panel.hr_panelists_name} "
+                    f"has been scheduled successfully.\n\n"
                     f"Date: {schedule.date}\n"
-                    f"Time: 11:00 AM - 12:00 PM IST\n"
+                    f"Time: {schedule.start_time.strftime('%I:%M %p')} - {schedule.end_time.strftime('%I:%M %p')} IST\n"
                     f"Google Meet Link: {meet_link}\n\n"
-                    f"Please join using the Google Meet link above at the scheduled time.\n\n"
-                    f"Best regards,\n"
+                    f"Best Regards,\n"
                     f"Recruitment Team"
                 )
-
-                if smtp_configured:
-                    try:
-                        print(f"Sending email to panelist: {panelist_email}")
-                        send_email(panelist_email, panelist_subject, panelist_body)
-                    except Exception as email_err:
-                        print(f"Failed to send email to panelist {panelist_email}: {str(email_err)}")
-                else:
-                    print(f"SMTP not configured. Panelist Email Log:\nTo: {panelist_email}\nSubject: {panelist_subject}\nBody:\n{panelist_body}\n")
+                email_body_panelist = (
+                    f"Dear {panel.hr_panelists_name},\n\n"
+                    f"You have been assigned to interview candidate {candidate.full_name} for the {job_role_title} role.\n\n"
+                    f"Date: {schedule.date}\n"
+                    f"Time: {schedule.start_time.strftime('%I:%M %p')} - {schedule.end_time.strftime('%I:%M %p')} IST\n"
+                    f"Google Meet Link: {meet_link}\n\n"
+                    f"Please join on time.\n\n"
+                    f"Best Regards,\n"
+                    f"Recruitment Team"
+                )
+                
+                # Send candidate email
+                try:
+                    send_email(candidate.email, "Interview Scheduled", email_body_candidate)
+                    print(f"Sent scheduling email to candidate {candidate.email}")
+                except Exception as email_err:
+                    print(f"Failed to send email to candidate: {email_err}")
+                
+                # Send panelist email
+                panelist_email = f"panel_{panel.hr_panelist_emp_id}@example.com"
+                try:
+                    send_email(panelist_email, "Interview Panel Assignment", email_body_panelist)
+                    print(f"Sent scheduling email to panelist {panelist_email}")
+                except Exception as email_err:
+                    print(f"Failed to send email to panelist: {email_err}")
+        except Exception as e:
+            print(f"Failed to execute email notification flow: {e}")
 
         # ============================================
         # SUCCESS RESPONSE

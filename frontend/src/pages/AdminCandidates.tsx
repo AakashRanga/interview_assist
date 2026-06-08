@@ -475,20 +475,18 @@ export function AdminCandidates() {
                           className="absolute right-4 top-full mt-1 w-44 bg-white border border-slate-200 rounded-xl shadow-xl z-20 overflow-hidden">
                           
 
-                            {(c.status === 'Selected' || c.status === 'Scheduled' || c.status === 'Interviewed') && (
-                              <>
-                                <button
-                                onClick={() => handleAction('reschedule', c)}
-                                className="w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-slate-50 transition-colors">
-                                  Reschedule
-                                </button>
-                                <button
-                                onClick={() => handleAction('reassign', c)}
-                                className="w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-slate-50 transition-colors">
-                                  Reassign Panel
-                                </button>
-                              </>
-                            )}
+                            <button
+                            onClick={() => handleAction('reschedule', c)}
+                            className="w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-slate-50 transition-colors">
+                            
+                              Reschedule
+                            </button>
+                            <button
+                            onClick={() => handleAction('reassign', c)}
+                            className="w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-slate-50 transition-colors">
+                            
+                              Reassign Panel
+                            </button>
                             <button
                             onClick={() => handleAction('feedback', c)}
                             className="w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-slate-50 transition-colors">
