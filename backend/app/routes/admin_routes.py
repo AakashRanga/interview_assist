@@ -11,6 +11,7 @@ from app.models.panel import Panel
 from app.services.notification_service import NotificationService
 from app.models.notification import ActivityType, NotificationType
 from app.workers.tasks import schedule_interview_task
+from app.models.panel import Panel
 from datetime import datetime, date, time, timedelta
 from zoneinfo import ZoneInfo
 
@@ -205,8 +206,15 @@ def schedule_interview(data: ScheduleInterviewRequest):
         if not candidate.email:
             raise HTTPException(status_code=400, detail="Candidate has no email address")
 
-        if candidate.status != "Applied":
-            raise HTTPException(status_code=400, detail=f"Candidate status '{candidate.status}' is not active")
+        # Resolve job_id if not provided
+        job_id = data.job_id
+        application = None
+        if not job_id:
+            application = db.query(CandidateApplication).filter(
+                CandidateApplication.candidate_id == data.candidate_id
+            ).order_by(CandidateApplication.created_at.desc()).first()
+            if application:
+                job_id = application.role_id
 
         # Step 3: Find available slot (uses IST)
         IST = ZoneInfo('Asia/Kolkata')
@@ -227,7 +235,7 @@ def schedule_interview(data: ScheduleInterviewRequest):
         # Step 4: Create schedule record
         schedule = InterviewSchedule(
             candidate_id=data.candidate_id,
-            job_id=data.job_id,
+            job_id=job_id,
             date=target_date,
             start_time=start_time,
             end_time=end_time,
@@ -236,17 +244,25 @@ def schedule_interview(data: ScheduleInterviewRequest):
         db.add(schedule)
         db.commit()
         db.refresh(schedule)
+
         # Update candidate application status to "Scheduled"
-        application = db.query(CandidateApplication).filter(
-            CandidateApplication.candidate_id == data.candidate_id,
-            CandidateApplication.role_id == data.job_id,
-            CandidateApplication.status == "Applied"
-        ).first()
+        if not application and job_id:
+            application = db.query(CandidateApplication).filter(
+                CandidateApplication.candidate_id == data.candidate_id,
+                CandidateApplication.role_id == job_id
+            ).order_by(CandidateApplication.created_at.desc()).first()
+
         if application:
             application.status = "Scheduled"
             db.add(application)
             db.commit()
 
+        # Update candidate status to "Scheduled"
+        candidate.status = "Scheduled"
+        db.add(candidate)
+        db.commit()
+
+        if application:
             try:
                 NotificationService.create_activity_and_notify(
                     db=db,
@@ -704,6 +720,142 @@ def reschedule_interview(candidate_id: int, data: RescheduleInterviewRequest):
             "status": "success",
             "message": f"Interview rescheduled to {target_date} {target_time}. n8n will generate Google Meet link.",
             "schedule_id": schedule.id
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db.close()
+
+
+# ============ Roles Management ============
+
+class AdminJobRoleResponse(BaseModel):
+    id: str
+    title: str
+    location: str
+    experience: str
+    totalVacancy: int
+    jobType: str
+    venue: Optional[str] = None
+    description: Optional[str] = None
+    createdAt: str
+    isVisible: bool
+
+
+class CreateJobRoleRequest(BaseModel):
+    title: str
+    location: str
+    experience: str
+    totalVacancy: int
+    jobType: str
+    venue: Optional[str] = None
+    description: Optional[str] = None
+
+
+class ToggleVisibilityRequest(BaseModel):
+    is_visible: bool
+
+
+@router.get("/roles", response_model=List[AdminJobRoleResponse])
+def get_admin_roles():
+    db = SessionLocal()
+    try:
+        roles = db.query(JobRole).order_by(JobRole.id.desc()).all()
+        result = []
+        for r in roles:
+            created_str = r.created_at.strftime("%Y-%m-%d") if r.created_at else datetime.utcnow().strftime("%Y-%m-%d")
+            result.append(
+                AdminJobRoleResponse(
+                    id=str(r.id),
+                    title=r.title,
+                    location=r.location,
+                    experience=r.experience,
+                    totalVacancy=r.total_vacancy,
+                    jobType=r.job_type,
+                    venue=r.venue,
+                    description=r.description,
+                    createdAt=created_str,
+                    isVisible=r.is_visible
+                )
+            )
+        return result
+    finally:
+        db.close()
+
+
+@router.post("/roles")
+def create_job_role(data: CreateJobRoleRequest):
+    db = SessionLocal()
+    try:
+        role = JobRole(
+            title=data.title,
+            location=data.location,
+            experience=data.experience,
+            total_vacancy=data.totalVacancy,
+            job_type=data.jobType,
+            venue=data.venue,
+            description=data.description,
+            is_visible=True
+        )
+        db.add(role)
+        db.commit()
+        db.refresh(role)
+        return {
+            "status": "success",
+            "message": "Job role created successfully",
+            "role_id": role.id
+        }
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db.close()
+
+
+@router.put("/roles/{role_id}/visibility")
+def toggle_job_role_visibility(role_id: int, data: ToggleVisibilityRequest):
+    db = SessionLocal()
+    try:
+        role = db.query(JobRole).filter(JobRole.id == role_id).first()
+        if not role:
+            raise HTTPException(status_code=404, detail="Job role not found")
+        
+        role.is_visible = data.is_visible
+        db.add(role)
+        db.commit()
+        
+        status_text = "visible" if data.is_visible else "hidden"
+        return {
+            "status": "success",
+            "message": f"Job role visibility updated to {status_text}"
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db.close()
+
+
+@router.delete("/roles/{role_id}")
+def delete_job_role(role_id: int):
+    db = SessionLocal()
+    try:
+        role = db.query(JobRole).filter(JobRole.id == role_id).first()
+        if not role:
+            raise HTTPException(status_code=404, detail="Job role not found")
+        
+        # Soft delete: set visibility to False to avoid foreign key issues
+        role.is_visible = False
+        db.add(role)
+        db.commit()
+        return {
+            "status": "success",
+            "message": "Job role deactivated successfully"
         }
     except HTTPException:
         raise

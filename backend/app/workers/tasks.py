@@ -146,6 +146,14 @@ def schedule_interview_task(schedule_id, candidate_id):
 
         if not meet_link:
             meet_link = f"https://meet.google.com/mock-meet-{schedule_id}"
+                except Exception as json_err:
+                    print(f"Failed to parse n8n response: {json_err}")
+        except Exception as n8n_err:
+            print(f"n8n call failed: {n8n_err}")
+
+        # Fallback to mock link if n8n failed or returned no hangoutLink
+        if not meet_link:
+            meet_link = f"https://meet.google.com/mock-{candidate.id}"
             print(f"Falling back to mock GMeet link: {meet_link}")
 
         # ============================================
@@ -232,6 +240,63 @@ def schedule_interview_task(schedule_id, candidate_id):
         )
 
         # ============================================
+        # SEND EMAIL NOTIFICATIONS
+        # ============================================
+        try:
+            from app.models.panel import Panel
+            from app.services.email_service import send_email
+            
+            panel = None
+            if candidate.panel_id:
+                # Try finding panel by ID or name
+                panel = db.query(Panel).filter(Panel.id == candidate.panel_id).first()
+                if not panel:
+                    panel = db.query(Panel).filter(Panel.hr_panelists_name == candidate.panel_id).first()
+                    
+            if not panel:
+                # Fallback to the first panel in database if candidate doesn't have one assigned
+                panel = db.query(Panel).first()
+                
+            if panel:
+                email_body_candidate = (
+                    f"Dear {candidate.full_name},\n\n"
+                    f"Your interview for the {job_role_title} role with Panelist {panel.hr_panelists_name} "
+                    f"has been scheduled successfully.\n\n"
+                    f"Date: {schedule.date}\n"
+                    f"Time: {schedule.start_time.strftime('%I:%M %p')} - {schedule.end_time.strftime('%I:%M %p')} IST\n"
+                    f"Google Meet Link: {meet_link}\n\n"
+                    f"Best Regards,\n"
+                    f"Recruitment Team"
+                )
+                email_body_panelist = (
+                    f"Dear {panel.hr_panelists_name},\n\n"
+                    f"You have been assigned to interview candidate {candidate.full_name} for the {job_role_title} role.\n\n"
+                    f"Date: {schedule.date}\n"
+                    f"Time: {schedule.start_time.strftime('%I:%M %p')} - {schedule.end_time.strftime('%I:%M %p')} IST\n"
+                    f"Google Meet Link: {meet_link}\n\n"
+                    f"Please join on time.\n\n"
+                    f"Best Regards,\n"
+                    f"Recruitment Team"
+                )
+                
+                # Send candidate email
+                try:
+                    send_email(candidate.email, "Interview Scheduled", email_body_candidate)
+                    print(f"Sent scheduling email to candidate {candidate.email}")
+                except Exception as email_err:
+                    print(f"Failed to send email to candidate: {email_err}")
+                
+                # Send panelist email
+                panelist_email = f"panel_{panel.hr_panelist_emp_id}@example.com"
+                try:
+                    send_email(panelist_email, "Interview Panel Assignment", email_body_panelist)
+                    print(f"Sent scheduling email to panelist {panelist_email}")
+                except Exception as email_err:
+                    print(f"Failed to send email to panelist: {email_err}")
+        except Exception as e:
+            print(f"Failed to execute email notification flow: {e}")
+
+        # ============================================
         # SUCCESS RESPONSE
         # ============================================
 
@@ -288,7 +353,3 @@ def schedule_interview_task(schedule_id, candidate_id):
 
     finally:
         db.close()
-
-
-
-        

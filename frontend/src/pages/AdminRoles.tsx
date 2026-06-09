@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { DashboardLayout } from '../components/dashboard/DashboardLayout';
@@ -7,15 +7,19 @@ import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import {
   BriefcaseIcon,
-  Trash2Icon,
+  EyeIcon,
+  EyeOffIcon,
   PlusIcon,
   MapPinIcon,
   ClockIcon,
   UsersIcon } from
 'lucide-react';
-import { seedJobRoles, type JobRole } from '../data/jobRoles';
+import { API_BASE_URL } from '../config';
+import { type JobRole } from '../data/jobRoles';
+
 export function AdminRoles() {
-  const [roles, setRoles] = useState<JobRole[]>(seedJobRoles);
+  const [roles, setRoles] = useState<JobRole[]>([]);
+  const [loading, setLoading] = useState(true);
   const [title, setTitle] = useState('');
   const [location, setLocation] = useState('');
   const [experience, setExperience] = useState('');
@@ -23,7 +27,25 @@ export function AdminRoles() {
   const [jobType, setJobType] = useState<'Online' | 'Offline'>('Online');
   const [venue, setVenue] = useState('');
   const [description, setDescription] = useState('');
-  const handleSubmit = (e: React.FormEvent) => {
+
+  const fetchRoles = async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/admin/roles`);
+      if (!res.ok) throw new Error('Failed to fetch job roles');
+      const data = await res.json();
+      setRoles(data);
+    } catch (err: any) {
+      toast.error(err.message || 'Error loading job roles');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchRoles();
+  }, []);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) {
       toast.error('Role title is required');
@@ -46,30 +68,54 @@ export function AdminRoles() {
       toast.error('Total vacancy must be at least 1');
       return;
     }
-    const newRole: JobRole = {
-      id: `r-${Date.now()}`,
-      title: title.trim(),
-      location: location.trim(),
-      experience: experience.trim(),
-      totalVacancy: vacancyNum,
-      jobType,
-      venue: jobType === 'Offline' ? venue.trim() : undefined,
-      description: description.trim() || undefined,
-      createdAt: new Date().toISOString().slice(0, 10)
-    };
-    setRoles((r) => [newRole, ...r]);
-    setTitle('');
-    setLocation('');
-    setExperience('');
-    setTotalVacancy('');
-    setJobType('Online');
-    setVenue('');
-    setDescription('');
-    toast.success('Job role created');
+    try {
+      const res = await fetch(`${API_BASE_URL}/admin/roles`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: title.trim(),
+          location: location.trim(),
+          experience: experience.trim(),
+          totalVacancy: vacancyNum,
+          jobType,
+          venue: jobType === 'Offline' ? venue.trim() : undefined,
+          description: description.trim() || undefined
+        })
+      });
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.detail || 'Failed to create job role');
+      }
+      toast.success('Job role created');
+      setTitle('');
+      setLocation('');
+      setExperience('');
+      setTotalVacancy('');
+      setJobType('Online');
+      setVenue('');
+      setDescription('');
+      fetchRoles();
+    } catch (err: any) {
+      toast.error(err.message || 'Error creating job role');
+    }
   };
-  const handleDelete = (id: string) => {
-    setRoles((r) => r.filter((x) => x.id !== id));
-    toast.success('Job role removed');
+
+  const handleToggleVisibility = async (id: string, currentIsVisible: boolean) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/admin/roles/${id}/visibility`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_visible: !currentIsVisible })
+      });
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.detail || 'Failed to update visibility');
+      }
+      toast.success(!currentIsVisible ? 'Job role is now visible' : 'Job role is now hidden');
+      fetchRoles();
+    } catch (err: any) {
+      toast.error(err.message || 'Error updating job role visibility');
+    }
   };
   return (
     <DashboardLayout role="admin" title="Roles" userName="Admin User">
@@ -215,14 +261,20 @@ export function AdminRoles() {
         </div>
 
         <GlassCard className="overflow-hidden">
-          {roles.length === 0 ?
-          <div className="p-10 text-center">
+          {loading ? (
+            <div className="p-10 text-center">
+              <div className="inline-block w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+              <p className="text-xs text-secondary/60 mt-2">Loading roles...</p>
+            </div>
+          ) : roles.length === 0 ? (
+            <div className="p-10 text-center">
               <BriefcaseIcon className="w-8 h-8 text-secondary/40 mx-auto mb-2" />
               <p className="text-sm text-secondary/70">No roles yet</p>
               <p className="text-[11px] text-secondary/50 mt-1">
                 Use the form above to create your first role
               </p>
-            </div> :
+            </div>
+          ) :
 
           <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -318,11 +370,19 @@ export function AdminRoles() {
                         </td>
                         <td className="px-5 py-3 text-right">
                           <button
-                        onClick={() => handleDelete(role.id)}
-                        className="p-1.5 hover:bg-red-50 rounded-lg transition-colors group inline-flex"
-                        title="Remove role">
-                        
-                            <Trash2Icon className="w-3.5 h-3.5 text-secondary/50 group-hover:text-red-500" />
+                            onClick={() => handleToggleVisibility(role.id, !!role.isVisible)}
+                            className={`p-1.5 rounded-lg transition-colors inline-flex ${
+                              role.isVisible 
+                                ? 'hover:bg-green-50 text-emerald-600' 
+                                : 'hover:bg-slate-100 text-slate-400'
+                            }`}
+                            title={role.isVisible ? 'Hide from candidates' : 'Show to candidates'}
+                          >
+                            {role.isVisible ? (
+                              <EyeIcon className="w-4 h-4" />
+                            ) : (
+                              <EyeOffIcon className="w-4 h-4" />
+                            )}
                           </button>
                         </td>
                       </motion.tr>

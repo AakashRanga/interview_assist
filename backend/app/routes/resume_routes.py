@@ -307,7 +307,7 @@ def get_candidate_profile(candidate_id: int):
             ))
 
         open_roles = []
-        for role in db.query(JobRole).all():
+        for role in db.query(JobRole).filter(JobRole.is_visible == True).all():
             open_roles.append(JobRoleResponse(
                 id=role.id,
                 title=role.title,
@@ -399,7 +399,7 @@ def get_candidate_profile_by_user(user_id: int):
             ))
 
         open_roles = []
-        for role in db.query(JobRole).all():
+        for role in db.query(JobRole).filter(JobRole.is_visible == True).all():
             open_roles.append(JobRoleResponse(
                 id=role.id,
                 title=role.title,
@@ -583,7 +583,7 @@ def update_candidate_profile(user_id: int, data: CandidateProfileUpdateRequest):
 def get_roles():
     db = SessionLocal()
     try:
-        return db.query(JobRole).all()
+        return db.query(JobRole).filter(JobRole.is_visible == True).all()
     finally:
         db.close()
 
@@ -592,7 +592,7 @@ def get_roles():
 def get_locations():
     db = SessionLocal()
     try:
-        locations = db.query(JobRole.location).distinct().all()
+        locations = db.query(JobRole.location).filter(JobRole.is_visible == True).distinct().all()
         return [location[0] for location in locations]
     finally:
         db.close()
@@ -675,7 +675,7 @@ def get_candidate_dashboard(user_id: int):
                 ))
 
         open_roles = []
-        for role in db.query(JobRole).all():
+        for role in db.query(JobRole).filter(JobRole.is_visible == True).all():
             open_roles.append(JobRoleResponse(
                 id=role.id,
                 title=role.title,
