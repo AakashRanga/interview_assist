@@ -26,6 +26,7 @@ export function AdminRoles() {
   const [totalVacancy, setTotalVacancy] = useState('');
   const [jobType, setJobType] = useState<'Online' | 'Offline'>('Online');
   const [venue, setVenue] = useState('');
+  const [level, setLevel] = useState('L1');
   const [description, setDescription] = useState('');
 
   const fetchRoles = async () => {
@@ -79,6 +80,7 @@ export function AdminRoles() {
           totalVacancy: vacancyNum,
           jobType,
           venue: jobType === 'Offline' ? venue.trim() : undefined,
+          level,
           description: description.trim() || undefined
         })
       });
@@ -93,6 +95,7 @@ export function AdminRoles() {
       setTotalVacancy('');
       setJobType('Online');
       setVenue('');
+      setLevel('L1');
       setDescription('');
       fetchRoles();
     } catch (err: any) {
@@ -207,6 +210,19 @@ export function AdminRoles() {
                       <option value="Offline">Offline</option>
                     </select>
                   </div>
+                  <div>
+                    <label className="block text-[10px] font-medium text-secondary/70 mb-2 uppercase tracking-wider">
+                      Interview Level
+                    </label>
+                    <select
+                      value={level}
+                      onChange={(e) => setLevel(e.target.value)}
+                      className="w-full px-4 py-3 bg-white/70 border border-white/60 rounded-2xl text-sm text-secondary focus:outline-none focus:ring-2 focus:ring-primary/50 appearance-none cursor-pointer">
+                      {Array.from({ length: 10 }, (_, i) => `L${i + 1}`).map((lvl) => (
+                        <option key={lvl} value={lvl}>{lvl}</option>
+                      ))}
+                    </select>
+                  </div>
             </div>
                 {jobType === 'Offline' && (
                 <Input
@@ -293,6 +309,9 @@ export function AdminRoles() {
                       Type
                     </th>
                     <th className="px-5 py-3 text-left text-[10px] font-semibold text-secondary/70 uppercase tracking-wider">
+                      Level
+                    </th>
+                    <th className="px-5 py-3 text-left text-[10px] font-semibold text-secondary/70 uppercase tracking-wider">
                       Venue
                     </th>
                     <th className="px-5 py-3 text-left text-[10px] font-semibold text-secondary/70 uppercase tracking-wider w-28">
@@ -353,6 +372,9 @@ export function AdminRoles() {
                         </td>
                         <td className="px-5 py-3 text-[12px] text-slate-700">
                           {role.jobType}
+                        </td>
+                        <td className="px-5 py-3 text-[12px] text-slate-700 font-semibold">
+                          {role.level || '—'}
                         </td>
                         <td className="px-5 py-3 text-[12px] text-slate-700">
                           {role.venue || '—'}

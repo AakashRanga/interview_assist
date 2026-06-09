@@ -49,15 +49,15 @@ class CandidateExperience(BaseModel):
 class CandidateLinks(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    portfolio: Optional[str]
-    linkedin: Optional[str]
-    github: Optional[str]
+    portfolio: Optional[str] = None
+    linkedin: Optional[str] = None
+    github: Optional[str] = None
 
 
 class CandidateDocuments(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    resume_path: Optional[str]
+    resume_path: Optional[str] = None
     certificates: List[str] = []
 
 
@@ -99,6 +99,7 @@ class JobRoleResponse(BaseModel):
     total_vacancy: int
     job_type: str
     venue: Optional[str] = None
+    level: Optional[str] = None
     description: Optional[str] = None
 
 class CandidateProfileResponse(BaseModel):
@@ -316,6 +317,7 @@ def get_candidate_profile(candidate_id: int):
                 total_vacancy=role.total_vacancy,
                 job_type=role.job_type,
                 venue=role.venue,
+                level=role.level,
                 description=role.description
             ))
 
@@ -408,6 +410,7 @@ def get_candidate_profile_by_user(user_id: int):
                 total_vacancy=role.total_vacancy,
                 job_type=role.job_type,
                 venue=role.venue,
+                level=role.level,
                 description=role.description
             ))
 
@@ -684,6 +687,7 @@ def get_candidate_dashboard(user_id: int):
                 total_vacancy=role.total_vacancy,
                 job_type=role.job_type,
                 venue=role.venue,
+                level=role.level,
                 description=role.description
             ))
 

@@ -51,6 +51,18 @@ export function parseGpa(gpaStr: string): { cgpa: string; percentage: string } {
   return { cgpa: '', percentage: gpaStr };
 }
 
+export function getErrorMessage(data: any, defaultMsg: string): string {
+  if (!data || !data.detail) return defaultMsg;
+  if (typeof data.detail === 'string') return data.detail;
+  if (Array.isArray(data.detail)) {
+    return data.detail.map((err: any) => {
+      const field = err.loc ? err.loc[err.loc.length - 1] : '';
+      return field ? `${field}: ${err.msg}` : err.msg;
+    }).join(', ');
+  }
+  return defaultMsg;
+}
+
 export function CandidateProfile() {
   const [userId, setUserId] = useState<number | null>(null);
   const [jobRoles, setJobRoles] = useState<any[]>([]);
@@ -358,7 +370,7 @@ export function CandidateProfile() {
 
       const data = await response.json();
       if (!response.ok) {
-        toast.error(data.detail || 'Failed to apply');
+        toast.error(getErrorMessage(data, 'Failed to apply'));
         return;
       }
 
@@ -549,7 +561,7 @@ export function CandidateProfile() {
 
     const data = await response.json();
     if (!response.ok) {
-      throw new Error(data.detail || 'Document upload failed');
+      throw new Error(getErrorMessage(data, 'Document upload failed'));
     }
     return data.path;
   };
@@ -619,12 +631,12 @@ export function CandidateProfile() {
           })),
           skills: skills,
           links: {
-            portfolio: links.portfolio,
-            linkedin: links.linkedin,
-            github: links.github
+            portfolio: links.portfolio || null,
+            linkedin: links.linkedin || null,
+            github: links.github || null
           },
           documents: {
-            resume_path: resumePath,
+            resume_path: resumePath || null,
             certificates: certificatePaths
           }
         })
@@ -632,7 +644,7 @@ export function CandidateProfile() {
 
       const data = await response.json();
       if (!response.ok) {
-        toast.error(data.detail || 'Failed to save profile');
+        toast.error(getErrorMessage(data, 'Failed to save profile'));
         return false;
       }
 
@@ -1345,7 +1357,7 @@ export function CandidateProfile() {
                       <option value="">Select a role to apply</option>
                       {jobRoles.map((r) =>
                       <option key={r.id} value={r.id}>
-                          {r.title} — {r.location} — {r.job_type || r.jobType || 'Online'}
+                          {r.title} — {r.location} — {r.level ? `${r.level} — ` : ''}{r.job_type || r.jobType || 'Online'}
                         </option>
                       )}
                     </select>
@@ -1438,6 +1450,12 @@ export function CandidateProfile() {
                         <span>Type:</span>
                         <span>{selectedRole.job_type || selectedRole.jobType || 'Online'}</span>
                       </div>
+                      {selectedRole.level && (
+                        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-indigo-500/10 border border-indigo-500/30 rounded-full text-[11px] font-medium text-indigo-700">
+                          <span>Level:</span>
+                          <span>{selectedRole.level}</span>
+                        </div>
+                      )}
                       {((selectedRole.job_type || selectedRole.jobType) === 'Offline') && selectedRole.venue && (
                         <div className="w-full rounded-2xl bg-slate-50 p-3 border border-slate-200 text-[13px] text-slate-800 mt-3">
                           <div className="text-[10px] uppercase tracking-wide text-slate-500 mb-1">
