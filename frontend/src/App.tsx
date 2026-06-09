@@ -22,7 +22,13 @@ import { Landing } from './pages/Landing';
 export function App() {
   return (
     <ThemeProvider>
-      <BrowserRouter basename="/interview_assist">
+      <BrowserRouter
+        basename="/interview_assist"
+        future={{
+          v7_startTransition: true,
+          v7_relativeSplatPath: true,
+        }}
+      >
         <Toaster position="top-right" />
         <Routes>
           <Route path="/" element={<Landing />} />

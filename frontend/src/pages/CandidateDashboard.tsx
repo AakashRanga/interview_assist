@@ -254,7 +254,7 @@ export function CandidateDashboard() {
                   <p className="text-sm text-secondary/70 mb-4 max-w-xs">
                     You haven't applied for any job position. Browse available roles and start your application.
                   </p>
-                  <Button size="sm" onClick={() => navigate('/candidate/profile', { hash: 'preferences' })}>
+                  <Button size="sm" onClick={() => navigate('/candidate/profile#preferences')}>
                     <BriefcaseIcon className="w-3.5 h-3.5 mr-2" />
                     Browse Jobs
                   </Button>

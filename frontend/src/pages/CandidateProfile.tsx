@@ -34,6 +34,18 @@ export function CandidateProfile() {
   const [userId, setUserId] = useState<number | null>(null);
   const [jobRoles, setJobRoles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [section, setSection] = useState<string>('personal');
+
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (hash) {
+      const sectionId = hash.replace('#', '');
+      const validSections = ['personal', 'education', 'experience', 'skills', 'preferences', 'documents', 'links'];
+      if (validSections.includes(sectionId)) {
+        setSection(sectionId);
+      }
+    }
+  }, []);
 
   const [personalInfo, setPersonalInfo] = useState({
     fullName: '',
@@ -606,658 +618,623 @@ export function CandidateProfile() {
           className="lg:col-span-1">
           
           <GlassCard className="p-4 sticky top-24">
-            <div className="space-y-1">
-              {sections.map((s) =>
-              <a
-                key={s.id}
-                href={`/candidate/profile#${s.id}`}
-                className="flex items-center space-x-3 px-3 py-2.5 rounded-xl text-sm text-secondary/70 hover:bg-white/60 hover:text-secondary transition-all">
-                
-                  <s.icon className="w-4 h-4" />
-                  <span>{s.label}</span>
-                </a>
-              )}
-            </div>
+              {sections.map((s) => {
+                const isActive = section === s.id;
+                return (
+                  <button
+                    key={s.id}
+                    onClick={() => {
+                      setSection(s.id);
+                      window.history.replaceState(null, '', `#${s.id}`);
+                    }}
+                    className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-sm transition-all ${
+                      isActive
+                        ? 'bg-primary/10 text-primary font-medium'
+                        : 'text-secondary/70 hover:bg-white/60 hover:text-secondary'
+                    }`}
+                  >
+                    <s.icon className="w-4 h-4" />
+                    <span>{s.label}</span>
+                  </button>
+                );
+              })}
           </GlassCard>
         </motion.div>
 
         {/* Form */}
         <div className="lg:col-span-3 space-y-6">
           {/* Personal Info */}
-          <motion.section
-            id="personal"
-            initial={{
-              opacity: 0,
-              y: 20
-            }}
-            animate={{
-              opacity: 1,
-              y: 0
-            }}
-            transition={{
-              delay: 0.1
-            }}>
-            
-            <GlassCard className="p-6">
-              <div className="flex items-center space-x-3 mb-6">
-                <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center">
-                  <UserIcon className="w-5 h-5 text-primary" />
+          {section === 'personal' && (
+            <motion.section
+              id="personal"
+              initial={{
+                opacity: 0,
+                y: 20
+              }}
+              animate={{
+                opacity: 1,
+                y: 0
+              }}
+              transition={{
+                delay: 0.1
+              }}>
+              
+              <GlassCard className="p-6">
+                <div className="flex items-center space-x-3 mb-6">
+                  <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center">
+                    <UserIcon className="w-5 h-5 text-primary" />
+                  </div>
+                  <h2 className="text-lg font-semibold text-secondary">
+                    Personal Information
+                  </h2>
                 </div>
-                <h2 className="text-lg font-semibold text-secondary">
-                  Personal Information
-                </h2>
-              </div>
-              <div className="grid md:grid-cols-2 gap-4">
-                <Input
-                  label="Full Name"
-                  value={personalInfo.fullName}
-                  onChange={(e) =>
-                  setPersonalInfo({
-                    ...personalInfo,
-                    fullName: e.target.value
-                  })
-                  } />
-                
-                <Input
-                  label="Email"
-                  type="email"
-                  value={personalInfo.email}
-                  onChange={(e) =>
-                  setPersonalInfo({
-                    ...personalInfo,
-                    email: e.target.value
-                  })
-                  } />
-                
-                <Input
-                  label="Phone"
-                  value={personalInfo.phone}
-                  onChange={(e) =>
-                  setPersonalInfo({
-                    ...personalInfo,
-                    phone: e.target.value
-                  })
-                  } />
-                
-                <Input
-                  label="Location"
-                  value={personalInfo.location}
-                  onChange={(e) =>
-                  setPersonalInfo({
-                    ...personalInfo,
-                    location: e.target.value
-                  })
-                  } />
-                
-              </div>
-            </GlassCard>
-          </motion.section>
+                <div className="grid md:grid-cols-2 gap-4">
+                  <Input
+                    label="Full Name"
+                    value={personalInfo.fullName}
+                    onChange={(e) =>
+                    setPersonalInfo({
+                      ...personalInfo,
+                      fullName: e.target.value
+                    })
+                    } />
+                  
+                  <Input
+                    label="Email"
+                    type="email"
+                    value={personalInfo.email}
+                    onChange={(e) =>
+                    setPersonalInfo({
+                      ...personalInfo,
+                      email: e.target.value
+                    })
+                    } />
+                  
+                  <Input
+                    label="Phone"
+                    value={personalInfo.phone}
+                    onChange={(e) =>
+                    setPersonalInfo({
+                      ...personalInfo,
+                      phone: e.target.value
+                    })
+                    } />
+                  
+                  <Input
+                    label="Location"
+                    value={personalInfo.location}
+                    onChange={(e) =>
+                    setPersonalInfo({
+                      ...personalInfo,
+                      location: e.target.value
+                    })
+                    } />
+                  
+                </div>
+              </GlassCard>
+            </motion.section>
+          )}
 
           {/* Education */}
-          <motion.section
-            id="education"
-            initial={{
-              opacity: 0,
-              y: 20
-            }}
-            animate={{
-              opacity: 1,
-              y: 0
-            }}
-            transition={{
-              delay: 0.15
-            }}>
-            
-            <GlassCard className="p-6">
-              <div className="flex items-center space-x-3 mb-6">
-                <div className="w-10 h-10 rounded-xl bg-cyan/10 border border-cyan/20 flex items-center justify-center">
-                  <GraduationCapIcon className="w-5 h-5 text-cyan" />
-                </div>
-                <h2 className="text-lg font-semibold text-secondary">
-                  Education
-                </h2>
-              </div>
-              <div className="space-y-6">
-                {educationList.map((edu, index) => (
-                  <div key={index} className="relative p-5 rounded-2xl bg-white/40 border border-white/60 shadow-sm space-y-4">
-                    {educationList.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setEducationList(educationList.filter((_, i) => i !== index));
-                          toast.success('Education entry removed');
-                        }}
-                        className="absolute top-4 right-4 p-1.5 bg-red-500/10 text-red-600 rounded-lg hover:bg-red-500/20 transition-all cursor-pointer border-0"
-                        title="Remove Education"
-                      >
-                        <XIcon className="w-4 h-4" />
-                      </button>
-                    )}
-                    <div className="text-[11px] font-semibold text-secondary/60 uppercase tracking-wider mb-2">
-                      Education #{index + 1}
-                    </div>
-                    <div className="grid md:grid-cols-2 gap-4">
-                      <Input
-                        label="Degree"
-                        value={edu.degree}
-                        onChange={(e) => {
-                          const updated = [...educationList];
-                          updated[index] = { ...updated[index], degree: e.target.value };
-                          setEducationList(updated);
-                        }}
-                      />
-                      <Input
-                        label="University"
-                        value={edu.university}
-                        onChange={(e) => {
-                          const updated = [...educationList];
-                          updated[index] = { ...updated[index], university: e.target.value };
-                          setEducationList(updated);
-                        }}
-                      />
-                      <Input
-                        label="Graduation Year"
-                        value={edu.graduationYear}
-                        onChange={(e) => {
-                          const updated = [...educationList];
-                          updated[index] = { ...updated[index], graduationYear: e.target.value };
-                          setEducationList(updated);
-                        }}
-                      />
-                      <Input
-                        label="GPA"
-                        value={edu.gpa}
-                        onChange={(e) => {
-                          const updated = [...educationList];
-                          updated[index] = { ...updated[index], gpa: e.target.value };
-                          setEducationList(updated);
-                        }}
-                      />
-                    </div>
+          {section === 'education' && (
+            <motion.section
+              id="education"
+              initial={{
+                opacity: 0,
+                y: 20
+              }}
+              animate={{
+                opacity: 1,
+                y: 0
+              }}
+              transition={{
+                delay: 0.15
+              }}>
+              
+              <GlassCard className="p-6">
+                <div className="flex items-center space-x-3 mb-6">
+                  <div className="w-10 h-10 rounded-xl bg-cyan/10 border border-cyan/20 flex items-center justify-center">
+                    <GraduationCapIcon className="w-5 h-5 text-cyan" />
                   </div>
-                ))}
-                
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setEducationList([...educationList, { degree: '', university: '', graduationYear: '', gpa: '' }])}
-                  className="w-full mt-2 cursor-pointer"
-                >
-                  + Add Education
-                </Button>
-              </div>
-            </GlassCard>
-          </motion.section>
+                  <h2 className="text-lg font-semibold text-secondary">
+                    Education
+                  </h2>
+                </div>
+                <div className="space-y-6">
+                  {educationList.map((edu, index) => (
+                    <div key={index} className="relative p-5 rounded-2xl bg-white/40 border border-white/60 shadow-sm space-y-4">
+                      {educationList.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEducationList(educationList.filter((_, i) => i !== index));
+                            toast.success('Education entry removed');
+                          }}
+                          className="absolute top-4 right-4 p-1.5 bg-red-500/10 text-red-600 rounded-lg hover:bg-red-500/20 transition-all cursor-pointer border-0"
+                          title="Remove Education"
+                        >
+                          <XIcon className="w-4 h-4" />
+                        </button>
+                      )}
+                      <div className="text-[11px] font-semibold text-secondary/60 uppercase tracking-wider mb-2">
+                        Education #{index + 1}
+                      </div>
+                      <div className="grid md:grid-cols-2 gap-4">
+                        <Input
+                          label="Degree"
+                          value={edu.degree}
+                          onChange={(e) => {
+                            const updated = [...educationList];
+                            updated[index] = { ...updated[index], degree: e.target.value };
+                            setEducationList(updated);
+                          }}
+                        />
+                        <Input
+                          label="University"
+                          value={edu.university}
+                          onChange={(e) => {
+                            const updated = [...educationList];
+                            updated[index] = { ...updated[index], university: e.target.value };
+                            setEducationList(updated);
+                          }}
+                        />
+                        <Input
+                          label="Graduation Year"
+                          value={edu.graduationYear}
+                          onChange={(e) => {
+                            const updated = [...educationList];
+                            updated[index] = { ...updated[index], graduationYear: e.target.value };
+                            setEducationList(updated);
+                          }}
+                        />
+                        <Input
+                          label="GPA"
+                          value={edu.gpa}
+                          onChange={(e) => {
+                            const updated = [...educationList];
+                            updated[index] = { ...updated[index], gpa: e.target.value };
+                            setEducationList(updated);
+                          }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                  
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setEducationList([...educationList, { degree: '', university: '', graduationYear: '', gpa: '' }])}
+                    className="w-full mt-2 cursor-pointer"
+                  >
+                    + Add Education
+                  </Button>
+                </div>
+              </GlassCard>
+            </motion.section>
+          )}
 
           {/* Experience */}
-          <motion.section
-            id="experience"
-            initial={{
-              opacity: 0,
-              y: 20
-            }}
-            animate={{
-              opacity: 1,
-              y: 0
-            }}
-            transition={{
-              delay: 0.2
-            }}>
-            
-            <GlassCard className="p-6">
-              <div className="flex items-center space-x-3 mb-6">
-                <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center">
-                  <BriefcaseIcon className="w-5 h-5 text-primary" />
-                </div>
-                <h2 className="text-lg font-semibold text-secondary">
-                  Experience
-                </h2>
-              </div>
-              <div className="space-y-6">
-                {experienceList.map((exp, index) => (
-                  <div key={index} className="relative p-5 rounded-2xl bg-white/40 border border-white/60 shadow-sm space-y-4">
-                    {experienceList.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setExperienceList(experienceList.filter((_, i) => i !== index));
-                          toast.success('Experience entry removed');
-                        }}
-                        className="absolute top-4 right-4 p-1.5 bg-red-500/10 text-red-600 rounded-lg hover:bg-red-500/20 transition-all cursor-pointer border-0"
-                        title="Remove Experience"
-                      >
-                        <XIcon className="w-4 h-4" />
-                      </button>
-                    )}
-                    <div className="text-[11px] font-semibold text-secondary/60 uppercase tracking-wider mb-2">
-                      Experience #{index + 1}
-                    </div>
-                    <div className="grid md:grid-cols-2 gap-4">
-                      <Input
-                        label="Job Role / Title"
-                        value={exp.currentRole}
-                        onChange={(e) => {
-                          const updated = [...experienceList];
-                          updated[index] = { ...updated[index], currentRole: e.target.value };
-                          setExperienceList(updated);
-                        }}
-                      />
-                      <Input
-                        label="Company"
-                        value={exp.company}
-                        onChange={(e) => {
-                          const updated = [...experienceList];
-                          updated[index] = { ...updated[index], company: e.target.value };
-                          setExperienceList(updated);
-                        }}
-                      />
-                      <Input
-                        label="Years of Experience"
-                        value={exp.years}
-                        onChange={(e) => {
-                          const updated = [...experienceList];
-                          updated[index] = { ...updated[index], years: e.target.value };
-                          setExperienceList(updated);
-                        }}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-secondary/70 mb-2 uppercase tracking-wide">
-                        Summary
-                      </label>
-                      <textarea
-                        rows={3}
-                        value={exp.summary}
-                        onChange={(e) => {
-                          const updated = [...experienceList];
-                          updated[index] = { ...updated[index], summary: e.target.value };
-                          setExperienceList(updated);
-                        }}
-                        placeholder="Briefly describe your work experience..."
-                        className="w-full px-4 py-3 bg-white/70 backdrop-blur-xl border border-white/60 rounded-2xl text-sm text-secondary placeholder:text-neutral/50 focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none font-medium"
-                      />
-                    </div>
-                  </div>
-                ))}
-                
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setExperienceList([...experienceList, { currentRole: '', company: '', years: '', summary: '' }])}
-                  className="w-full mt-2 cursor-pointer"
-                >
-                  + Add Experience
-                </Button>
-              </div>
-            </GlassCard>
-          </motion.section>
-
-          {/* Skills */}
-          <motion.section
-            id="skills"
-            initial={{
-              opacity: 0,
-              y: 20
-            }}
-            animate={{
-              opacity: 1,
-              y: 0
-            }}
-            transition={{
-              delay: 0.25
-            }}>
-            
-            <GlassCard className="p-6">
-              <div className="flex items-center space-x-3 mb-6">
-                <div className="w-10 h-10 rounded-xl bg-cyan/10 border border-cyan/20 flex items-center justify-center">
-                  <CodeIcon className="w-5 h-5 text-cyan" />
-                </div>
-                <h2 className="text-lg font-semibold text-secondary">Skills</h2>
-              </div>
-              <div className="flex flex-wrap gap-2 mb-4">
-                {skills.map((skill) =>
-                <motion.span
-                  key={skill}
-                  initial={{
-                    scale: 0.8,
-                    opacity: 0
-                  }}
-                  animate={{
-                    scale: 1,
-                    opacity: 1
-                  }}
-                  className="inline-flex items-center space-x-2 px-3 py-1.5 bg-primary/10 text-primary text-sm rounded-full border border-primary/20">
-                  
-                    <span>{skill}</span>
-                    <button
-                    onClick={() => removeSkill(skill)}
-                    className="hover:bg-primary/20 rounded-full p-0.5">
-                    
-                      <XIcon className="w-3 h-3" />
-                    </button>
-                  </motion.span>
-                )}
-              </div>
-              <div className="flex space-x-2">
-                <Input
-                  placeholder="Add a skill and press Enter"
-                  value={skillInput}
-                  onChange={(e) => setSkillInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      addSkill();
-                    }
-                  }} />
-                
-                <Button onClick={addSkill}>Add</Button>
-              </div>
-            </GlassCard>
-          </motion.section>
-
-          {/* Apply to a Role */}
-          <motion.section
-            id="preferences"
-            initial={{
-              opacity: 0,
-              y: 20
-            }}
-            animate={{
-              opacity: 1,
-              y: 0
-            }}
-            transition={{
-              delay: 0.28
-            }}>
-            
-            <GlassCard className="p-6">
-              <div className="flex items-center justify-between mb-6 flex-wrap gap-2">
-                <div className="flex items-center space-x-3">
+          {section === 'experience' && (
+            <motion.section
+              id="experience"
+              initial={{
+                opacity: 0,
+                y: 20
+              }}
+              animate={{
+                opacity: 1,
+                y: 0
+              }}
+              transition={{
+                delay: 0.2
+              }}>
+              
+              <GlassCard className="p-6">
+                <div className="flex items-center space-x-3 mb-6">
                   <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center">
                     <BriefcaseIcon className="w-5 h-5 text-primary" />
                   </div>
-                  <div>
-                    <h2 className="text-lg font-semibold text-secondary">
-                      Apply for a Role
-                    </h2>
-                    <p className="text-[11px] text-secondary/60 mt-0.5">
-                      Pick from current openings and apply directly
-                    </p>
-                  </div>
+                  <h2 className="text-lg font-semibold text-secondary">
+                    Experience
+                  </h2>
                 </div>
-                <Badge variant="primary" size="sm">
-                  {jobRoles.length} open roles
-                </Badge>
-              </div>
-              <div className="grid md:grid-cols-2 gap-4 mb-4">
-                <div>
-                  <label className="block text-xs font-medium text-secondary/70 mb-2 uppercase tracking-wide">
-                    Open Role
-                  </label>
-                  <select
-                    value={preferences.role}
-                    onChange={(e) =>
-                    setPreferences({
-                      ...preferences,
-                      role: e.target.value
-                    })
-                    }
-                    className="w-full px-4 py-3 bg-white/70 backdrop-blur-xl border border-white/60 rounded-2xl text-sm text-secondary focus:outline-none focus:ring-2 focus:ring-primary/50 appearance-none cursor-pointer">
-                    
-                    <option value="">Select a role to apply</option>
-                    {jobRoles.map((r) =>
-                    <option key={r.id} value={r.id}>
-                        {r.title} — {r.location} — {r.job_type || r.jobType || 'Online'}
-                      </option>
-                    )}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-secondary/70 mb-2 uppercase tracking-wide">
-                    Preferred Location (India)
-                  </label>
-                  <select
-                    value={preferences.location}
-                    onChange={(e) =>
-                    setPreferences({
-                      ...preferences,
-                      location: e.target.value
-                    })
-                    }
-                    className="w-full px-4 py-3 bg-white/70 backdrop-blur-xl border border-white/60 rounded-2xl text-sm text-secondary focus:outline-none focus:ring-2 focus:ring-primary/50 appearance-none cursor-pointer">
-                    
-                    <option value="">Select a city</option>
-                    {indiaLocationOptions.map((c) =>
-                    <option key={c} value={c}>
-                        {c}
-                      </option>
-                    )}
-                  </select>
-                </div>
-              </div>
-              {selectedRole &&
-              <motion.div
-                initial={{
-                  opacity: 0,
-                  y: 8
-                }}
-                animate={{
-                  opacity: 1,
-                  y: 0
-                }}
-                className="bg-white/60 border border-primary/20 rounded-2xl p-4">
-                
-                  <div className="flex items-start justify-between gap-3 flex-wrap mb-3">
-                    <div className="min-w-0">
-                      <div className="text-sm font-semibold text-secondary">
-                        {selectedRole.title}
+                <div className="space-y-6">
+                  {experienceList.map((exp, index) => (
+                    <div key={index} className="relative p-5 rounded-2xl bg-white/40 border border-white/60 shadow-sm space-y-4">
+                      {experienceList.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setExperienceList(experienceList.filter((_, i) => i !== index));
+                            toast.success('Experience entry removed');
+                          }}
+                          className="absolute top-4 right-4 p-1.5 bg-red-500/10 text-red-600 rounded-lg hover:bg-red-500/20 transition-all cursor-pointer border-0"
+                          title="Remove Experience"
+                        >
+                          <XIcon className="w-4 h-4" />
+                        </button>
+                      )}
+                      <div className="text-[11px] font-semibold text-secondary/60 uppercase tracking-wider mb-2">
+                        Experience #{index + 1}
                       </div>
-                      {selectedRole.description &&
-                    <p className="text-[12px] text-secondary/70 mt-1">
-                          {selectedRole.description}
-                        </p>
-                    }
-                    </div>
-                    <Button
-                    size="sm"
-                    variant={
-                    appliedRoleIds.has(String(selectedRole.id)) ?
-                    'outline' :
-                    'primary'
-                    }
-                    onClick={handleApply}
-                    disabled={appliedRoleIds.size > 0}>
-                    
-                      {appliedRoleIds.has(String(selectedRole.id)) ?
-                    <>
-                          <CheckCircleIcon className="w-3.5 h-3.5 mr-1" />
-                          Applied
-                        </> :
- 
-                    'Apply Now'
-                    }
-                    </Button>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-cyan/10 border border-cyan/30 rounded-full text-[11px] font-medium text-cyan">
-                      <MapPinIcon className="w-3 h-3" />
-                      <span className="text-cyan/70">Location:</span>
-                      <span>{selectedRole.location || 'Not specified'}</span>
-                    </div>
-                    <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-amber-500/10 border border-amber-500/30 rounded-full text-[11px] font-medium text-amber-700">
-                      <ClockIcon className="w-3 h-3" />
-                      <span className="text-amber-700/70">Experience:</span>
-                      <span>{selectedRole.experience || 'Not specified'}</span>
-                    </div>
-                    <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-primary/10 border border-primary/30 rounded-full text-[11px] font-medium text-primary">
-                      <UsersIcon className="w-3 h-3" />
-                      {selectedRole.totalVacancy}{' '}
-                      {selectedRole.totalVacancy === 1 ?
-                    'vacancy' :
-                    'vacancies'}
-                    </div>
-                    <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-slate-100 border border-slate-300 rounded-full text-[11px] font-medium text-slate-700">
-                      <span>Type:</span>
-                      <span>{selectedRole.job_type || selectedRole.jobType || 'Online'}</span>
-                    </div>
-                    {((selectedRole.job_type || selectedRole.jobType) === 'Offline') && selectedRole.venue && (
-                      <div className="w-full rounded-2xl bg-slate-50 p-3 border border-slate-200 text-[13px] text-slate-800 mt-3">
-                        <div className="text-[10px] uppercase tracking-wide text-slate-500 mb-1">
-                          Interview Venue
-                        </div>
-                        {selectedRole.venue}
-                      </div>
-                    )}
-                  </div>
-                </motion.div>
-              }
-              {appliedRoleIds.size > 0 &&
-              <div className="mt-4 pt-4 border-t border-white/60">
-                  <div className="text-[10px] font-semibold text-secondary/60 uppercase tracking-wider mb-2">
-                    Your Applications ({appliedRoleIds.size})
-                  </div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {Array.from(appliedRoleIds).map((id) => {
-                    const r = jobRoles.find((x) => String(x.id) === String(id));
-                    if (!r) return null;
-                    return (
-                      <span
-                        key={id}
-                        className="inline-flex items-center gap-1 px-2.5 py-1 bg-green-500/10 border border-green-500/20 rounded-full text-[11px] text-green-700">
-                        
-                          <CheckCircleIcon className="w-3 h-3" />
-                          {r.title}
-                        </span>);
-                  })}
-                  </div>
-                </div>
-              }
-            </GlassCard>
-          </motion.section>
-
-          {/* Documents */}
-          <motion.section
-            id="documents"
-            initial={{
-              opacity: 0,
-              y: 20
-            }}
-            animate={{
-              opacity: 1,
-              y: 0
-            }}
-            transition={{
-              delay: 0.3
-            }}>
-            
-            <GlassCard className="p-6">
-              <div className="flex items-center space-x-3 mb-6">
-                <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center">
-                  <FileTextIcon className="w-5 h-5 text-primary" />
-                </div>
-                <h2 className="text-lg font-semibold text-secondary">
-                  Documents
-                </h2>
-              </div>
-
-              {/* Resume */}
-              <div className="mb-6">
-                <label className="block text-xs font-medium text-secondary/70 mb-2 uppercase tracking-wide">
-                  Resume <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="file"
-                  ref={resumeInputRef}
-                  onChange={handleResumeUpload}
-                  accept=".pdf,.doc,.docx"
-                  className="hidden" />
-                
-                {!resume ?
-                <button
-                  onClick={() => resumeInputRef.current?.click()}
-                  className="w-full border-2 border-dashed border-primary/30 rounded-2xl p-8 hover:bg-white/40 transition-colors text-center">
-                  
-                    <UploadCloudIcon className="w-10 h-10 text-primary/60 mx-auto mb-3" />
-                    <div className="text-sm font-medium text-secondary mb-1">
-                      Click to upload resume
-                    </div>
-                    <div className="text-xs text-secondary/60">
-                      PDF, DOC, DOCX up to 10MB
-                    </div>
-                  </button> :
-
-                <div className="flex flex-col gap-3 p-4 bg-white/50 rounded-2xl border border-primary/20 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-10 h-10 rounded-lg bg-green-500/10 border border-green-500/20 flex items-center justify-center">
-                        <CheckCircleIcon className="w-5 h-5 text-green-600" />
+                      <div className="grid md:grid-cols-2 gap-4">
+                        <Input
+                          label="Job Role / Title"
+                          value={exp.currentRole}
+                          onChange={(e) => {
+                            const updated = [...experienceList];
+                            updated[index] = { ...updated[index], currentRole: e.target.value };
+                            setExperienceList(updated);
+                          }}
+                        />
+                        <Input
+                          label="Company"
+                          value={exp.company}
+                          onChange={(e) => {
+                            const updated = [...experienceList];
+                            updated[index] = { ...updated[index], company: e.target.value };
+                            setExperienceList(updated);
+                          }}
+                        />
+                        <Input
+                          label="Years of Experience"
+                          value={exp.years}
+                          onChange={(e) => {
+                            const updated = [...experienceList];
+                            updated[index] = { ...updated[index], years: e.target.value };
+                            setExperienceList(updated);
+                          }}
+                        />
                       </div>
                       <div>
-                        <div className="text-sm font-medium text-secondary">
-                          {resume.name}
-                        </div>
-                        <div className="text-xs text-secondary/60">
-                          {resume.size}
-                        </div>
+                        <label className="block text-xs font-medium text-secondary/70 mb-2 uppercase tracking-wide">
+                          Summary
+                        </label>
+                        <textarea
+                          rows={3}
+                          value={exp.summary}
+                          onChange={(e) => {
+                            const updated = [...experienceList];
+                            updated[index] = { ...updated[index], summary: e.target.value };
+                            setExperienceList(updated);
+                          }}
+                          placeholder="Briefly describe your work experience..."
+                          className="w-full px-4 py-3 bg-white/70 backdrop-blur-xl border border-white/60 rounded-2xl text-sm text-secondary placeholder:text-neutral/50 focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none font-medium"
+                        />
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      {resume.path && (
-                        <a
-                          href={getDocumentUrl(resume.path)}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-sm text-primary hover:text-primary/80 font-medium"
-                        >
-                          View
-                        </a>
-                      )}
+                  ))}
+                  
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setExperienceList([...experienceList, { currentRole: '', company: '', years: '', summary: '' }])}
+                    className="w-full mt-2 cursor-pointer"
+                  >
+                    + Add Experience
+                  </Button>
+                </div>
+              </GlassCard>
+            </motion.section>
+          )}
+
+          {/* Skills */}
+          {section === 'skills' && (
+            <motion.section
+              id="skills"
+              initial={{
+                opacity: 0,
+                y: 20
+              }}
+              animate={{
+                opacity: 1,
+                y: 0
+              }}
+              transition={{
+                delay: 0.25
+              }}>
+              
+              <GlassCard className="p-6">
+                <div className="flex items-center space-x-3 mb-6">
+                  <div className="w-10 h-10 rounded-xl bg-cyan/10 border border-cyan/20 flex items-center justify-center">
+                    <CodeIcon className="w-5 h-5 text-cyan" />
+                  </div>
+                  <h2 className="text-lg font-semibold text-secondary">Skills</h2>
+                </div>
+                <div className="flex flex-wrap gap-2 mb-4">
+                  {skills.map((skill) =>
+                  <motion.span
+                    key={skill}
+                    initial={{
+                      scale: 0.8,
+                      opacity: 0
+                    }}
+                    animate={{
+                      scale: 1,
+                      opacity: 1
+                    }}
+                    className="inline-flex items-center space-x-2 px-3 py-1.5 bg-primary/10 text-primary text-sm rounded-full border border-primary/20">
+                    
+                      <span>{skill}</span>
                       <button
-                        onClick={() => setResume(null)}
-                        className="p-2 hover:bg-white/50 rounded-lg transition-colors"
-                      >
-                        <XIcon className="w-4 h-4 text-secondary" />
+                      onClick={() => removeSkill(skill)}
+                      className="hover:bg-primary/20 rounded-full p-0.5">
+                      
+                        <XIcon className="w-3 h-3" />
                       </button>
+                    </motion.span>
+                  )}
+                </div>
+                <div className="flex space-x-2">
+                  <Input
+                    placeholder="Add a skill and press Enter"
+                    value={skillInput}
+                    onChange={(e) => setSkillInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        addSkill();
+                      }
+                    }} />
+                  
+                  <Button onClick={addSkill}>Add</Button>
+                </div>
+              </GlassCard>
+            </motion.section>
+          )}
+
+          {/* Apply to a Role */}
+          {section === 'preferences' && (
+            <motion.section
+              id="preferences"
+              initial={{
+                opacity: 0,
+                y: 20
+              }}
+              animate={{
+                opacity: 1,
+                y: 0
+              }}
+              transition={{
+                delay: 0.28
+              }}>
+              
+              <GlassCard className="p-6">
+                <div className="flex items-center justify-between mb-6 flex-wrap gap-2">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center">
+                      <BriefcaseIcon className="w-5 h-5 text-primary" />
+                    </div>
+                    <div>
+                      <h2 className="text-lg font-semibold text-secondary">
+                        Apply for a Role
+                      </h2>
+                      <p className="text-[11px] text-secondary/60 mt-0.5">
+                        Pick from current openings and apply directly
+                      </p>
+                    </div>
+                  </div>
+                  <Badge variant="primary" size="sm">
+                    {jobRoles.length} open roles
+                  </Badge>
+                </div>
+                <div className="grid md:grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <label className="block text-xs font-medium text-secondary/70 mb-2 uppercase tracking-wide">
+                      Open Role
+                    </label>
+                    <select
+                      value={preferences.role}
+                      onChange={(e) =>
+                      setPreferences({
+                        ...preferences,
+                        role: e.target.value
+                      })
+                      }
+                      className="w-full px-4 py-3 bg-white/70 backdrop-blur-xl border border-white/60 rounded-2xl text-sm text-secondary focus:outline-none focus:ring-2 focus:ring-primary/50 appearance-none cursor-pointer">
+                      
+                      <option value="">Select a role to apply</option>
+                      {jobRoles.map((r) =>
+                      <option key={r.id} value={r.id}>
+                          {r.title} — {r.location} — {r.job_type || r.jobType || 'Online'}
+                        </option>
+                      )}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-secondary/70 mb-2 uppercase tracking-wide">
+                      Preferred Location (India)
+                    </label>
+                    <select
+                      value={preferences.location}
+                      onChange={(e) =>
+                      setPreferences({
+                        ...preferences,
+                        location: e.target.value
+                      })
+                      }
+                      className="w-full px-4 py-3 bg-white/70 backdrop-blur-xl border border-white/60 rounded-2xl text-sm text-secondary focus:outline-none focus:ring-2 focus:ring-primary/50 appearance-none cursor-pointer">
+                      
+                      <option value="">Select a city</option>
+                      {indiaLocationOptions.map((c) =>
+                      <option key={c} value={c}>
+                          {c}
+                        </option>
+                      )}
+                    </select>
+                  </div>
+                </div>
+                {selectedRole &&
+                <motion.div
+                  initial={{
+                    opacity: 0,
+                    y: 8
+                  }}
+                  animate={{
+                    opacity: 1,
+                    y: 0
+                  }}
+                  className="bg-white/60 border border-primary/20 rounded-2xl p-4">
+                  
+                    <div className="flex items-start justify-between gap-3 flex-wrap mb-3">
+                      <div className="min-w-0">
+                        <div className="text-sm font-semibold text-secondary">
+                          {selectedRole.title}
+                        </div>
+                        {selectedRole.description &&
+                      <p className="text-[12px] text-secondary/70 mt-1">
+                            {selectedRole.description}
+                          </p>
+                      }
+                      </div>
+                      <Button
+                      size="sm"
+                      variant={
+                      appliedRoleIds.has(String(selectedRole.id)) ?
+                      'outline' :
+                      'primary'
+                      }
+                      onClick={handleApply}
+                      disabled={appliedRoleIds.size > 0}>
+                      
+                        {appliedRoleIds.has(String(selectedRole.id)) ?
+                      <>
+                            <CheckCircleIcon className="w-3.5 h-3.5 mr-1" />
+                            Applied
+                          </> :
+    
+                      'Apply Now'
+                      }
+                      </Button>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-cyan/10 border border-cyan/30 rounded-full text-[11px] font-medium text-cyan">
+                        <MapPinIcon className="w-3 h-3" />
+                        <span className="text-cyan/70">Location:</span>
+                        <span>{selectedRole.location || 'Not specified'}</span>
+                      </div>
+                      <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-amber-500/10 border border-amber-500/30 rounded-full text-[11px] font-medium text-amber-700">
+                        <ClockIcon className="w-3 h-3" />
+                        <span className="text-amber-700/70">Experience:</span>
+                        <span>{selectedRole.experience || 'Not specified'}</span>
+                      </div>
+                      <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-primary/10 border border-primary/30 rounded-full text-[11px] font-medium text-primary">
+                        <UsersIcon className="w-3 h-3" />
+                        {selectedRole.totalVacancy}{' '}
+                        {selectedRole.totalVacancy === 1 ?
+                      'vacancy' :
+                      'vacancies'}
+                      </div>
+                      <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-slate-100 border border-slate-300 rounded-full text-[11px] font-medium text-slate-700">
+                        <span>Type:</span>
+                        <span>{selectedRole.job_type || selectedRole.jobType || 'Online'}</span>
+                      </div>
+                      {((selectedRole.job_type || selectedRole.jobType) === 'Offline') && selectedRole.venue && (
+                        <div className="w-full rounded-2xl bg-slate-50 p-3 border border-slate-200 text-[13px] text-slate-800 mt-3">
+                          <div className="text-[10px] uppercase tracking-wide text-slate-500 mb-1">
+                            Interview Venue
+                          </div>
+                          {selectedRole.venue}
+                        </div>
+                      )}
+                    </div>
+                  </motion.div>
+                }
+                {appliedRoleIds.size > 0 &&
+                <div className="mt-4 pt-4 border-t border-white/60">
+                    <div className="text-[10px] font-semibold text-secondary/60 uppercase tracking-wider mb-2">
+                      Your Applications ({appliedRoleIds.size})
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {Array.from(appliedRoleIds).map((id) => {
+                      const r = jobRoles.find((x) => String(x.id) === String(id));
+                      if (!r) return null;
+                      return (
+                        <span
+                          key={id}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 bg-green-500/10 border border-green-500/20 rounded-full text-[11px] text-green-700">
+                          
+                            <CheckCircleIcon className="w-3 h-3" />
+                            {r.title}
+                          </span>);
+                    })}
                     </div>
                   </div>
                 }
-              </div>
+              </GlassCard>
+            </motion.section>
+          )}
 
-              {/* Certificates */}
-              <div>
-                <label className="block text-xs font-medium text-secondary/70 mb-2 uppercase tracking-wide">
-                  Certificates
-                </label>
-                <input
-                  type="file"
-                  ref={certInputRef}
-                  onChange={handleCertUpload}
-                  accept=".pdf,.jpg,.png"
-                  multiple
-                  className="hidden" />
-                
-                <div className="space-y-2 mb-3">
-                  {certificates.map((cert, i) =>
-                  <div
-                    key={i}
-                    className="flex items-center justify-between p-3 bg-white/50 rounded-xl">
+          {/* Documents */}
+          {section === 'documents' && (
+            <motion.section
+              id="documents"
+              initial={{
+                opacity: 0,
+                y: 20
+              }}
+              animate={{
+                opacity: 1,
+                y: 0
+              }}
+              transition={{
+                delay: 0.3
+              }}>
+              
+              <GlassCard className="p-6">
+                <div className="flex items-center space-x-3 mb-6">
+                  <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center">
+                    <FileTextIcon className="w-5 h-5 text-primary" />
+                  </div>
+                  <h2 className="text-lg font-semibold text-secondary">
+                    Documents
+                  </h2>
+                </div>
+  
+                {/* Resume */}
+                <div className="mb-6">
+                  <label className="block text-xs font-medium text-secondary/70 mb-2 uppercase tracking-wide">
+                    Resume <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="file"
+                    ref={resumeInputRef}
+                    onChange={handleResumeUpload}
+                    accept=".pdf,.doc,.docx"
+                    className="hidden" />
+                  
+                  {!resume ?
+                  <button
+                    onClick={() => resumeInputRef.current?.click()}
+                    className="w-full border-2 border-dashed border-primary/30 rounded-2xl p-8 hover:bg-white/40 transition-colors text-center">
                     
+                      <UploadCloudIcon className="w-10 h-10 text-primary/60 mx-auto mb-3" />
+                      <div className="text-sm font-medium text-secondary mb-1">
+                        Click to upload resume
+                      </div>
+                      <div className="text-xs text-secondary/60">
+                        PDF, DOC, DOCX up to 10MB
+                      </div>
+                    </button> :
+  
+                  <div className="flex flex-col gap-3 p-4 bg-white/50 rounded-2xl border border-primary/20 sm:flex-row sm:items-center sm:justify-between">
                       <div className="flex items-center space-x-3">
-                        <div className="w-9 h-9 rounded-lg bg-cyan/10 border border-cyan/20 flex items-center justify-center">
-                          <AwardIcon className="w-4 h-4 text-cyan" />
+                        <div className="w-10 h-10 rounded-lg bg-green-500/10 border border-green-500/20 flex items-center justify-center">
+                          <CheckCircleIcon className="w-5 h-5 text-green-600" />
                         </div>
                         <div>
                           <div className="text-sm font-medium text-secondary">
-                            {cert.name}
+                            {resume.name}
                           </div>
                           <div className="text-xs text-secondary/60">
-                            {cert.size}
+                            {resume.size}
                           </div>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        {cert.path && (
+                        {resume.path && (
                           <a
-                            href={getDocumentUrl(cert.path)}
+                            href={getDocumentUrl(resume.path)}
                             target="_blank"
                             rel="noreferrer"
                             className="text-sm text-primary hover:text-primary/80 font-medium"
@@ -1266,92 +1243,149 @@ export function CandidateProfile() {
                           </a>
                         )}
                         <button
-                          onClick={() =>
-                            setCertificates(
-                              certificates.filter((_, idx) => idx !== i)
-                            )
-                          }
+                          onClick={() => setResume(null)}
                           className="p-2 hover:bg-white/50 rounded-lg transition-colors"
                         >
                           <XIcon className="w-4 h-4 text-secondary" />
                         </button>
                       </div>
                     </div>
-                  )}
+                  }
                 </div>
-                <Button
-                  variant="outline"
-                  onClick={() => certInputRef.current?.click()}
-                  className="w-full">
+  
+                {/* Certificates */}
+                <div>
+                  <label className="block text-xs font-medium text-secondary/70 mb-2 uppercase tracking-wide">
+                    Certificates
+                  </label>
+                  <input
+                    type="file"
+                    ref={certInputRef}
+                    onChange={handleCertUpload}
+                    accept=".pdf,.jpg,.png"
+                    multiple
+                    className="hidden" />
                   
-                  <UploadCloudIcon className="w-4 h-4 mr-2" />
-                  Upload Certificates
-                </Button>
-              </div>
-            </GlassCard>
-          </motion.section>
+                  <div className="space-y-2 mb-3">
+                    {certificates.map((cert, i) =>
+                    <div
+                      key={i}
+                      className="flex items-center justify-between p-3 bg-white/50 rounded-xl">
+                      
+                        <div className="flex items-center space-x-3">
+                          <div className="w-9 h-9 rounded-lg bg-cyan/10 border border-cyan/20 flex items-center justify-center">
+                            <AwardIcon className="w-4 h-4 text-cyan" />
+                          </div>
+                          <div>
+                            <div className="text-sm font-medium text-secondary">
+                              {cert.name}
+                            </div>
+                            <div className="text-xs text-secondary/60">
+                              {cert.size}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {cert.path && (
+                            <a
+                              href={getDocumentUrl(cert.path)}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-sm text-primary hover:text-primary/80 font-medium"
+                            >
+                              View
+                            </a>
+                          )}
+                          <button
+                            onClick={() =>
+                              setCertificates(
+                                certificates.filter((_, idx) => idx !== i)
+                              )
+                            }
+                            className="p-2 hover:bg-white/50 rounded-lg transition-colors"
+                          >
+                            <XIcon className="w-4 h-4 text-secondary" />
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  <Button
+                    variant="outline"
+                    onClick={() => certInputRef.current?.click()}
+                    className="w-full">
+                    
+                    <UploadCloudIcon className="w-4 h-4 mr-2" />
+                    Upload Certificates
+                  </Button>
+                </div>
+              </GlassCard>
+            </motion.section>
+          )}
 
           {/* Links */}
-          <motion.section
-            id="links"
-            initial={{
-              opacity: 0,
-              y: 20
-            }}
-            animate={{
-              opacity: 1,
-              y: 0
-            }}
-            transition={{
-              delay: 0.35
-            }}>
-            
-            <GlassCard className="p-6">
-              <div className="flex items-center space-x-3 mb-6">
-                <div className="w-10 h-10 rounded-xl bg-cyan/10 border border-cyan/20 flex items-center justify-center">
-                  <LinkIcon className="w-5 h-5 text-cyan" />
+          {section === 'links' && (
+            <motion.section
+              id="links"
+              initial={{
+                opacity: 0,
+                y: 20
+              }}
+              animate={{
+                opacity: 1,
+                y: 0
+              }}
+              transition={{
+                delay: 0.35
+              }}>
+              
+              <GlassCard className="p-6">
+                <div className="flex items-center space-x-3 mb-6">
+                  <div className="w-10 h-10 rounded-xl bg-cyan/10 border border-cyan/20 flex items-center justify-center">
+                    <LinkIcon className="w-5 h-5 text-cyan" />
+                  </div>
+                  <h2 className="text-lg font-semibold text-secondary">
+                    Portfolio & Links
+                  </h2>
                 </div>
-                <h2 className="text-lg font-semibold text-secondary">
-                  Portfolio & Links
-                </h2>
-              </div>
-              <div className="space-y-4">
-                <Input
-                  label="Portfolio URL"
-                  placeholder="https://yourportfolio.com"
-                  value={links.portfolio}
-                  onChange={(e) =>
-                  setLinks({
-                    ...links,
-                    portfolio: e.target.value
-                  })
-                  } />
-                
-                <Input
-                  label="LinkedIn"
-                  placeholder="https://linkedin.com/in/yourname"
-                  value={links.linkedin}
-                  onChange={(e) =>
-                  setLinks({
-                    ...links,
-                    linkedin: e.target.value
-                  })
-                  } />
-                
-                <Input
-                  label="GitHub"
-                  placeholder="https://github.com/yourname"
-                  value={links.github}
-                  onChange={(e) =>
-                  setLinks({
-                    ...links,
-                    github: e.target.value
-                  })
-                  } />
-                
-              </div>
-            </GlassCard>
-          </motion.section>
+                <div className="space-y-4">
+                  <Input
+                    label="Portfolio URL"
+                    placeholder="https://yourportfolio.com"
+                    value={links.portfolio}
+                    onChange={(e) =>
+                    setLinks({
+                      ...links,
+                      portfolio: e.target.value
+                    })
+                    } />
+                  
+                  <Input
+                    label="LinkedIn"
+                    placeholder="https://linkedin.com/in/yourname"
+                    value={links.linkedin}
+                    onChange={(e) =>
+                    setLinks({
+                      ...links,
+                      linkedin: e.target.value
+                    })
+                    } />
+                  
+                  <Input
+                    label="GitHub"
+                    placeholder="https://github.com/yourname"
+                    value={links.github}
+                    onChange={(e) =>
+                    setLinks({
+                      ...links,
+                      github: e.target.value
+                    })
+                    } />
+                  
+                </div>
+              </GlassCard>
+            </motion.section>
+          )}
 
           {/* Submit */}
           <motion.div
