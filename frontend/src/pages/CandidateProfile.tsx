@@ -30,6 +30,27 @@ interface UploadedFile {
   path?: string;
 }
 
+export function parseGpa(gpaStr: string): { cgpa: string; percentage: string } {
+  if (!gpaStr) return { cgpa: '', percentage: '' };
+  if (gpaStr.includes('|')) {
+    const parts = gpaStr.split('|');
+    return {
+      cgpa: parts[0]?.trim() || '',
+      percentage: parts[1]?.trim() || ''
+    };
+  }
+  const val = gpaStr.replace('%', '').trim();
+  const num = parseFloat(val);
+  if (!isNaN(num)) {
+    if (num > 10) {
+      return { cgpa: '', percentage: val };
+    } else {
+      return { cgpa: val, percentage: '' };
+    }
+  }
+  return { cgpa: '', percentage: gpaStr };
+}
+
 export function CandidateProfile() {
   const [userId, setUserId] = useState<number | null>(null);
   const [jobRoles, setJobRoles] = useState<any[]>([]);
@@ -59,7 +80,44 @@ export function CandidateProfile() {
     university: string;
     graduationYear: string;
     gpa: string;
-  }>>([{ degree: '', university: '', graduationYear: '', gpa: '' }]);
+  }>>([
+    { degree: 'SSLC', university: '', graduationYear: '', gpa: '' },
+    { degree: 'HSC', university: '', graduationYear: '', gpa: '' },
+    { degree: '', university: '', graduationYear: '', gpa: '' },
+    { degree: '', university: '', graduationYear: '', gpa: '' }
+  ]);
+  const [visibleEducationLevels, setVisibleEducationLevels] = useState<number>(1);
+
+  const updateUgPgGpa = (index: number, field: 'cgpa' | 'percentage', value: string) => {
+    const updated = [...educationList];
+    const { cgpa, percentage } = parseGpa(updated[index]?.gpa || '');
+    let newCgpa = cgpa;
+    let newPercentage = percentage;
+    if (field === 'cgpa') {
+      newCgpa = value;
+    } else {
+      newPercentage = value;
+    }
+    updated[index] = {
+      ...updated[index],
+      gpa: (newCgpa || newPercentage) ? `${newCgpa}|${newPercentage}` : ''
+    };
+    setEducationList(updated);
+  };
+
+  const handleRemoveLevel = (index: number) => {
+    const updated = [...educationList];
+    updated[index] = {
+      ...updated[index],
+      university: '',
+      graduationYear: '',
+      gpa: '',
+      degree: index >= 2 ? '' : updated[index].degree
+    };
+    setEducationList(updated);
+    setVisibleEducationLevels(index);
+    toast.success('Education section removed');
+  };
 
   const [experienceList, setExperienceList] = useState<Array<{
     id?: number;
@@ -120,19 +178,94 @@ export function CandidateProfile() {
         location: data.location || ''
       });
       
-      if (data.education && Array.isArray(data.education) && data.education.length > 0) {
-        setEducationList(
-          data.education.map((edu: any) => ({
-            id: edu.id,
-            degree: edu.degree || '',
-            university: edu.university || '',
-            graduationYear: edu.graduation_year || '',
-            gpa: edu.gpa || ''
-          }))
-        );
-      } else {
-        setEducationList([{ degree: '', university: '', graduationYear: '', gpa: '' }]);
+      const loadedEducation: Array<{
+        id?: number;
+        degree: string;
+        university: string;
+        graduationYear: string;
+        gpa: string;
+      }> = [
+        { degree: 'SSLC', university: '', graduationYear: '', gpa: '' },
+        { degree: 'HSC', university: '', graduationYear: '', gpa: '' },
+        { degree: '', university: '', graduationYear: '', gpa: '' },
+        { degree: '', university: '', graduationYear: '', gpa: '' }
+      ];
+
+      if (data.education && Array.isArray(data.education)) {
+        data.education.forEach((edu: any) => {
+          const deg = (edu.degree || '').trim();
+          if (!deg) return;
+
+          if (deg === 'SSLC') {
+            loadedEducation[0] = {
+              id: edu.id,
+              degree: 'SSLC',
+              university: edu.university || '',
+              graduationYear: edu.graduation_year || '',
+              gpa: edu.gpa || ''
+            };
+          } else if (deg === 'HSC') {
+            loadedEducation[1] = {
+              id: edu.id,
+              degree: 'HSC',
+              university: edu.university || '',
+              graduationYear: edu.graduation_year || '',
+              gpa: edu.gpa || ''
+            };
+          } else if (deg.startsWith('UG - ')) {
+            loadedEducation[2] = {
+              id: edu.id,
+              degree: deg.slice(5),
+              university: edu.university || '',
+              graduationYear: edu.graduation_year || '',
+              gpa: edu.gpa || ''
+            };
+          } else if (deg.startsWith('PG - ')) {
+            loadedEducation[3] = {
+              id: edu.id,
+              degree: deg.slice(5),
+              university: edu.university || '',
+              graduationYear: edu.graduation_year || '',
+              gpa: edu.gpa || ''
+            };
+          } else {
+            // Un-prefixed degree fallback. Guess based on common patterns.
+            const lowerDeg = deg.toLowerCase();
+            const isPg = lowerDeg.startsWith('m') || 
+                         lowerDeg.includes('master') || 
+                         lowerDeg.startsWith('pg') || 
+                         lowerDeg.startsWith('post');
+            if (isPg) {
+              loadedEducation[3] = {
+                id: edu.id,
+                degree: deg,
+                university: edu.university || '',
+                graduationYear: edu.graduation_year || '',
+                gpa: edu.gpa || ''
+              };
+            } else {
+              loadedEducation[2] = {
+                id: edu.id,
+                degree: deg,
+                university: edu.university || '',
+                graduationYear: edu.graduation_year || '',
+                gpa: edu.gpa || ''
+              };
+            }
+          }
+        });
       }
+      setEducationList(loadedEducation);
+      
+      let maxVisible = 1;
+      if (loadedEducation[3].university || loadedEducation[3].graduationYear || loadedEducation[3].gpa || loadedEducation[3].degree) {
+        maxVisible = 4;
+      } else if (loadedEducation[2].university || loadedEducation[2].graduationYear || loadedEducation[2].gpa || loadedEducation[2].degree) {
+        maxVisible = 3;
+      } else if (loadedEducation[1].university || loadedEducation[1].graduationYear || loadedEducation[1].gpa) {
+        maxVisible = 2;
+      }
+      setVisibleEducationLevels(maxVisible);
       
       if (data.experience && Array.isArray(data.experience) && data.experience.length > 0) {
         setExperienceList(
@@ -297,11 +430,12 @@ export function CandidateProfile() {
       countFilled(personalInfo.location);
 
     const hasEducation = educationList.some(
-      (edu) =>
-        countFilled(edu.degree) ||
+      (edu, idx) =>
         countFilled(edu.university) ||
         countFilled(edu.graduationYear) ||
-        countFilled(edu.gpa)
+        countFilled(edu.gpa) ||
+        (idx === 2 && countFilled(edu.degree)) ||
+        (idx === 3 && countFilled(edu.degree))
     );
     const hasExperience = experienceList.some(
       (exp) =>
@@ -450,13 +584,32 @@ export function CandidateProfile() {
           email: personalInfo.email,
           phone: personalInfo.phone,
           location: personalInfo.location,
-          education: educationList.map((edu) => ({
-            id: edu.id,
-            degree: edu.degree,
-            university: edu.university,
-            graduation_year: edu.graduationYear,
-            gpa: edu.gpa
-          })),
+          education: educationList
+            .map((edu, idx) => {
+              let savedDegree = edu.degree || '';
+              if (idx === 0) savedDegree = 'SSLC';
+              else if (idx === 1) savedDegree = 'HSC';
+              else if (idx === 2) savedDegree = edu.degree ? `UG - ${edu.degree}` : 'UG';
+              else if (idx === 3) savedDegree = edu.degree ? `PG - ${edu.degree}` : 'PG';
+
+              return {
+                id: edu.id,
+                degree: savedDegree,
+                university: edu.university || '',
+                graduation_year: edu.graduationYear || '',
+                gpa: edu.gpa || ''
+              };
+            })
+            .filter((edu, idx) => {
+              if (idx >= visibleEducationLevels) return false;
+              const isFilled =
+                edu.university.trim().length > 0 ||
+                edu.graduation_year.trim().length > 0 ||
+                edu.gpa.trim().length > 0 ||
+                (idx === 2 && edu.degree !== 'UG') ||
+                (idx === 3 && edu.degree !== 'PG');
+              return isFilled;
+            }),
           experience: experienceList.map((exp) => ({
             id: exp.id,
             current_role: exp.currentRole,
@@ -741,73 +894,229 @@ export function CandidateProfile() {
                   </h2>
                 </div>
                 <div className="space-y-6">
-                  {educationList.map((edu, index) => (
-                    <div key={index} className="relative p-5 rounded-2xl bg-white/40 border border-white/60 shadow-sm space-y-4">
-                      {educationList.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setEducationList(educationList.filter((_, i) => i !== index));
-                            toast.success('Education entry removed');
-                          }}
-                          className="absolute top-4 right-4 p-1.5 bg-red-500/10 text-red-600 rounded-lg hover:bg-red-500/20 transition-all cursor-pointer border-0"
-                          title="Remove Education"
-                        >
-                          <XIcon className="w-4 h-4" />
-                        </button>
-                      )}
-                      <div className="text-[11px] font-semibold text-secondary/60 uppercase tracking-wider mb-2">
-                        Education #{index + 1}
+                  {/* SSLC Panel */}
+                  {educationList[0] && (
+                    <div className="relative p-5 rounded-2xl bg-white/40 border border-white/60 shadow-sm space-y-4">
+                      <div className="text-[12px] font-semibold text-secondary/60 uppercase tracking-wider mb-2">
+                        SSLC (Class 10)
                       </div>
-                      <div className="grid md:grid-cols-2 gap-4">
+                      <div className="grid md:grid-cols-3 gap-4">
                         <Input
-                          label="Degree"
-                          value={edu.degree}
+                          label="School Name / Board"
+                          value={educationList[0].university}
                           onChange={(e) => {
                             const updated = [...educationList];
-                            updated[index] = { ...updated[index], degree: e.target.value };
+                            updated[0] = { ...updated[0], university: e.target.value };
                             setEducationList(updated);
                           }}
                         />
                         <Input
-                          label="University"
-                          value={edu.university}
+                          label="Passing Year"
+                          value={educationList[0].graduationYear}
                           onChange={(e) => {
                             const updated = [...educationList];
-                            updated[index] = { ...updated[index], university: e.target.value };
+                            updated[0] = { ...updated[0], graduationYear: e.target.value };
                             setEducationList(updated);
                           }}
                         />
                         <Input
-                          label="Graduation Year"
-                          value={edu.graduationYear}
+                          label="Percentage (%)"
+                          value={educationList[0].gpa}
                           onChange={(e) => {
                             const updated = [...educationList];
-                            updated[index] = { ...updated[index], graduationYear: e.target.value };
-                            setEducationList(updated);
-                          }}
-                        />
-                        <Input
-                          label="GPA"
-                          value={edu.gpa}
-                          onChange={(e) => {
-                            const updated = [...educationList];
-                            updated[index] = { ...updated[index], gpa: e.target.value };
+                            updated[0] = { ...updated[0], gpa: e.target.value };
                             setEducationList(updated);
                           }}
                         />
                       </div>
                     </div>
-                  ))}
-                  
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setEducationList([...educationList, { degree: '', university: '', graduationYear: '', gpa: '' }])}
-                    className="w-full mt-2 cursor-pointer"
-                  >
-                    + Add Education
-                  </Button>
+                  )}
+
+                  {/* HSC Panel */}
+                  {visibleEducationLevels >= 2 && educationList[1] && (
+                    <div className="relative p-5 rounded-2xl bg-white/40 border border-white/60 shadow-sm space-y-4">
+                      {visibleEducationLevels === 2 && (
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveLevel(1)}
+                          className="absolute top-4 right-4 p-1.5 bg-red-500/10 text-red-600 rounded-lg hover:bg-red-500/20 transition-all cursor-pointer border-0"
+                          title="Remove HSC"
+                        >
+                          <XIcon className="w-4 h-4" />
+                        </button>
+                      )}
+                      <div className="text-[12px] font-semibold text-secondary/60 uppercase tracking-wider mb-2">
+                        HSC (Class 12)
+                      </div>
+                      <div className="grid md:grid-cols-3 gap-4">
+                        <Input
+                          label="School Name / Board"
+                          value={educationList[1].university}
+                          onChange={(e) => {
+                            const updated = [...educationList];
+                            updated[1] = { ...updated[1], university: e.target.value };
+                            setEducationList(updated);
+                          }}
+                        />
+                        <Input
+                          label="Passing Year"
+                          value={educationList[1].graduationYear}
+                          onChange={(e) => {
+                            const updated = [...educationList];
+                            updated[1] = { ...updated[1], graduationYear: e.target.value };
+                            setEducationList(updated);
+                          }}
+                        />
+                        <Input
+                          label="Percentage (%)"
+                          value={educationList[1].gpa}
+                          onChange={(e) => {
+                            const updated = [...educationList];
+                            updated[1] = { ...updated[1], gpa: e.target.value };
+                            setEducationList(updated);
+                          }}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* UG Panel */}
+                  {visibleEducationLevels >= 3 && educationList[2] && (() => {
+                    const { cgpa, percentage } = parseGpa(educationList[2].gpa);
+                    return (
+                      <div className="relative p-5 rounded-2xl bg-white/40 border border-white/60 shadow-sm space-y-4">
+                        {visibleEducationLevels === 3 && (
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveLevel(2)}
+                            className="absolute top-4 right-4 p-1.5 bg-red-500/10 text-red-600 rounded-lg hover:bg-red-500/20 transition-all cursor-pointer border-0"
+                            title="Remove UG"
+                          >
+                            <XIcon className="w-4 h-4" />
+                          </button>
+                        )}
+                        <div className="text-[12px] font-semibold text-secondary/60 uppercase tracking-wider mb-2">
+                          Undergraduate (UG)
+                        </div>
+                        <div className="grid md:grid-cols-2 gap-4">
+                          <Input
+                            label="Degree Name (e.g. B.E, B.Tech, B.Sc)"
+                            value={educationList[2].degree}
+                            onChange={(e) => {
+                              const updated = [...educationList];
+                              updated[2] = { ...updated[2], degree: e.target.value };
+                              setEducationList(updated);
+                            }}
+                          />
+                          <Input
+                            label="College / University"
+                            value={educationList[2].university}
+                            onChange={(e) => {
+                              const updated = [...educationList];
+                              updated[2] = { ...updated[2], university: e.target.value };
+                              setEducationList(updated);
+                            }}
+                          />
+                          <Input
+                            label="Passing Year"
+                            value={educationList[2].graduationYear}
+                            onChange={(e) => {
+                              const updated = [...educationList];
+                              updated[2] = { ...updated[2], graduationYear: e.target.value };
+                              setEducationList(updated);
+                            }}
+                          />
+                          <div className="grid grid-cols-2 gap-3">
+                            <Input
+                              label="CGPA"
+                              value={cgpa}
+                              onChange={(e) => updateUgPgGpa(2, 'cgpa', e.target.value)}
+                            />
+                            <Input
+                              label="Percentage (%)"
+                              value={percentage}
+                              onChange={(e) => updateUgPgGpa(2, 'percentage', e.target.value)}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* PG Panel */}
+                  {visibleEducationLevels >= 4 && educationList[3] && (() => {
+                    const { cgpa, percentage } = parseGpa(educationList[3].gpa);
+                    return (
+                      <div className="relative p-5 rounded-2xl bg-white/40 border border-white/60 shadow-sm space-y-4">
+                        {visibleEducationLevels === 4 && (
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveLevel(3)}
+                            className="absolute top-4 right-4 p-1.5 bg-red-500/10 text-red-600 rounded-lg hover:bg-red-500/20 transition-all cursor-pointer border-0"
+                            title="Remove PG"
+                          >
+                            <XIcon className="w-4 h-4" />
+                          </button>
+                        )}
+                        <div className="text-[12px] font-semibold text-secondary/60 uppercase tracking-wider mb-2">
+                          Postgraduate (PG) - Optional
+                        </div>
+                        <div className="grid md:grid-cols-2 gap-4">
+                          <Input
+                            label="Degree Name (e.g. M.E, M.Tech, M.Sc)"
+                            value={educationList[3].degree}
+                            onChange={(e) => {
+                              const updated = [...educationList];
+                              updated[3] = { ...updated[3], degree: e.target.value };
+                              setEducationList(updated);
+                            }}
+                          />
+                          <Input
+                            label="College / University"
+                            value={educationList[3].university}
+                            onChange={(e) => {
+                              const updated = [...educationList];
+                              updated[3] = { ...updated[3], university: e.target.value };
+                              setEducationList(updated);
+                            }}
+                          />
+                          <Input
+                            label="Passing Year"
+                            value={educationList[3].graduationYear}
+                            onChange={(e) => {
+                              const updated = [...educationList];
+                              updated[3] = { ...updated[3], graduationYear: e.target.value };
+                              setEducationList(updated);
+                            }}
+                          />
+                          <div className="grid grid-cols-2 gap-3">
+                            <Input
+                              label="CGPA"
+                              value={cgpa}
+                              onChange={(e) => updateUgPgGpa(3, 'cgpa', e.target.value)}
+                            />
+                            <Input
+                              label="Percentage (%)"
+                              value={percentage}
+                              onChange={(e) => updateUgPgGpa(3, 'percentage', e.target.value)}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Add Education Button */}
+                  {visibleEducationLevels < 4 && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setVisibleEducationLevels((prev) => prev + 1)}
+                      className="w-full mt-2 cursor-pointer"
+                    >
+                      + Add Education
+                    </Button>
+                  )}
                 </div>
               </GlassCard>
             </motion.section>
