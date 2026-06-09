@@ -828,6 +828,7 @@ class AdminJobRoleResponse(BaseModel):
     totalVacancy: int
     jobType: str
     venue: Optional[str] = None
+    level: Optional[str] = None
     description: Optional[str] = None
     createdAt: str
     isVisible: bool
@@ -985,6 +986,7 @@ class CreateJobRoleRequest(BaseModel):
     totalVacancy: int
     jobType: str
     venue: Optional[str] = None
+    level: Optional[str] = None
     description: Optional[str] = None
 
 
@@ -1009,6 +1011,7 @@ def get_admin_roles():
                     totalVacancy=r.total_vacancy,
                     jobType=r.job_type,
                     venue=r.venue,
+                    level=r.level,
                     description=r.description,
                     createdAt=created_str,
                     isVisible=r.is_visible
@@ -1030,6 +1033,7 @@ def create_job_role(data: CreateJobRoleRequest):
             total_vacancy=data.totalVacancy,
             job_type=data.jobType,
             venue=data.venue,
+            level=data.level,
             description=data.description,
             is_visible=True
         )

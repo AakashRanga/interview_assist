@@ -1345,7 +1345,7 @@ export function CandidateProfile() {
                       <option value="">Select a role to apply</option>
                       {jobRoles.map((r) =>
                       <option key={r.id} value={r.id}>
-                          {r.title} — {r.location} — {r.job_type || r.jobType || 'Online'}
+                          {r.title} — {r.location} — {r.level ? `${r.level} — ` : ''}{r.job_type || r.jobType || 'Online'}
                         </option>
                       )}
                     </select>
@@ -1438,6 +1438,12 @@ export function CandidateProfile() {
                         <span>Type:</span>
                         <span>{selectedRole.job_type || selectedRole.jobType || 'Online'}</span>
                       </div>
+                      {selectedRole.level && (
+                        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-indigo-500/10 border border-indigo-500/30 rounded-full text-[11px] font-medium text-indigo-700">
+                          <span>Level:</span>
+                          <span>{selectedRole.level}</span>
+                        </div>
+                      )}
                       {((selectedRole.job_type || selectedRole.jobType) === 'Offline') && selectedRole.venue && (
                         <div className="w-full rounded-2xl bg-slate-50 p-3 border border-slate-200 text-[13px] text-slate-800 mt-3">
                           <div className="text-[10px] uppercase tracking-wide text-slate-500 mb-1">
