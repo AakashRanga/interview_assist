@@ -49,15 +49,15 @@ class CandidateExperience(BaseModel):
 class CandidateLinks(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    portfolio: Optional[str]
-    linkedin: Optional[str]
-    github: Optional[str]
+    portfolio: Optional[str] = None
+    linkedin: Optional[str] = None
+    github: Optional[str] = None
 
 
 class CandidateDocuments(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    resume_path: Optional[str]
+    resume_path: Optional[str] = None
     certificates: List[str] = []
 
 

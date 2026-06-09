@@ -16,6 +16,7 @@ export interface Candidate {
   mode: 'Online' | 'Offline';
   panelId: string;
   panelGroupId: string;
+  roleId?: number;
   profileComplete: number;
   avatar: string;
   skills: string[];
