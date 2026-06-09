@@ -162,7 +162,7 @@ User File (Excel)
 ### For End Users (Admins)
 
 1. **Access Admin Panels Page**
-   - Navigate to: `http://localhost:8189/interview_assist/#/admin/panels`
+   - Navigate to: `http://localhost:8189/interview_assist/admin/panels`
    - Must be logged in as admin user
 
 2. **Download Template**
@@ -492,7 +492,7 @@ For support or feature requests:
 - 💾 **Sample Data**: [SAMPLE_PANEL_DATA.md](./SAMPLE_PANEL_DATA.md)
 - 🧪 **Testing**: [TESTING_GUIDE.md](./TESTING_GUIDE.md)
 - 🔧 **Technical**: [IMPLEMENTATION_SUMMARY.md](./IMPLEMENTATION_SUMMARY.md)
-- 🌐 **Admin Panel**: [http://localhost:8189/interview_assist/#/admin/panels](http://localhost:8189/interview_assist/#/admin/panels)
+- 🌐 **Admin Panel**: [http://localhost:8189/interview_assist/admin/panels](http://localhost:8189/interview_assist/admin/panels)
 
 ---
 

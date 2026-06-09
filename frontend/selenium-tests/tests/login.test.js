@@ -45,7 +45,7 @@ describe('Login Test', function() {
       log('Starting login test...');
 
       // Navigate to login page
-      await driver.get(`${BASE_URL}/#/login`);
+      await driver.get(`${BASE_URL}/login`);
       log('Navigated to login page');
 
       // Wait for form to load

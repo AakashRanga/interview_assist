@@ -610,7 +610,7 @@ export function CandidateProfile() {
               {sections.map((s) =>
               <a
                 key={s.id}
-                href={`/#/candidate/profile#${s.id}`}
+                href={`/candidate/profile#${s.id}`}
                 className="flex items-center space-x-3 px-3 py-2.5 rounded-xl text-sm text-secondary/70 hover:bg-white/60 hover:text-secondary transition-all">
                 
                   <s.icon className="w-4 h-4" />

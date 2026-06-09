@@ -115,7 +115,7 @@ Priya Singh,priya.singh@example.com,SecurePass456#,panel,Priya Singh,Manager,987
 ## Manual Testing Steps
 
 ### 1. Download Template
-1. Navigate to: `http://localhost:8189/interview_assist/#/admin/panels`
+1. Navigate to: `http://localhost:8189/interview_assist/admin/panels`
 2. Click "Template" button
 3. Verify Excel file downloads with:
    - Header row with column names

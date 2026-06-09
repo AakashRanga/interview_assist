@@ -12,26 +12,56 @@ export default defineConfig({
       '/admin': {
         target: 'http://localhost:8000',
         changeOrigin: true,
+        bypass: (req) => {
+          if (req.headers.accept && req.headers.accept.indexOf('html') !== -1) {
+            return '/interview_assist/index.html';
+          }
+        }
       },
       '/auth': {
         target: 'http://localhost:8000',
         changeOrigin: true,
+        bypass: (req) => {
+          if (req.headers.accept && req.headers.accept.indexOf('html') !== -1) {
+            return '/interview_assist/index.html';
+          }
+        }
       },
       '/resume': {
         target: 'http://localhost:8000',
         changeOrigin: true,
+        bypass: (req) => {
+          if (req.headers.accept && req.headers.accept.indexOf('html') !== -1) {
+            return '/interview_assist/index.html';
+          }
+        }
       },
       '/candidate': {
         target: 'http://localhost:8000',
         changeOrigin: true,
+        bypass: (req) => {
+          if (req.headers.accept && req.headers.accept.indexOf('html') !== -1) {
+            return '/interview_assist/index.html';
+          }
+        }
       },
       '/notification': {
         target: 'http://localhost:8000',
         changeOrigin: true,
+        bypass: (req) => {
+          if (req.headers.accept && req.headers.accept.indexOf('html') !== -1) {
+            return '/interview_assist/index.html';
+          }
+        }
       },
       '/user': {
         target: 'http://localhost:8000',
         changeOrigin: true,
+        bypass: (req) => {
+          if (req.headers.accept && req.headers.accept.indexOf('html') !== -1) {
+            return '/interview_assist/index.html';
+          }
+        }
       },
       '/uploads': {
         target: 'http://localhost:8000',

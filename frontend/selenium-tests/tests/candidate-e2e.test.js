@@ -130,7 +130,7 @@ describe('Candidate E2E Workflow', function() {
 
         // Navigate to signup page
         log('Navigating to signup page...');
-        await driver.get(`${BASE_URL}/#/signup`);
+        await driver.get(`${BASE_URL}/signup`);
 
         // Wait for page to load - look for form
         await driver.wait(until.elementLocated(By.css('form')), 15000);
@@ -203,7 +203,7 @@ describe('Candidate E2E Workflow', function() {
 
         // Navigate to login page
         log('Navigating to login page...');
-        await driver.get(`${BASE_URL}/#/login`);
+        await driver.get(`${BASE_URL}/login`);
 
         // Wait for email field
         await driver.wait(until.elementLocated(By.css('form input[type="email"]')), 10000);
@@ -261,7 +261,7 @@ describe('Candidate E2E Workflow', function() {
     it('should navigate to profile page', async function() {
       try {
         log('Navigating to profile page...');
-        await driver.get(`${BASE_URL}/#/candidate/profile`);
+        await driver.get(`${BASE_URL}/candidate/profile`);
 
         // Wait for page to load - look for section with id="personal"
         await driver.wait(until.elementLocated(By.id('personal')), 15000);
@@ -561,7 +561,7 @@ describe('Candidate E2E Workflow', function() {
     it('should navigate to dashboard', async function() {
       try {
         log('Navigating to dashboard...');
-        await driver.get(`${BASE_URL}/#/candidate/dashboard`);
+        await driver.get(`${BASE_URL}/candidate/dashboard`);
 
         // Wait for dashboard to load
         await driver.wait(until.elementLocated(By.css('body')), 10000);
@@ -642,7 +642,7 @@ describe('Candidate E2E Workflow', function() {
         const shortPassword = 'abc'; // Less than 6 characters
 
         // Navigate to signup page
-        await driver.get(`${BASE_URL}/#/signup`);
+        await driver.get(`${BASE_URL}/signup`);
         await driver.wait(until.elementLocated(By.css('form')), 15000);
 
         const inputs = await driver.findElements(By.css('form input'));
@@ -694,7 +694,7 @@ describe('Candidate E2E Workflow', function() {
         log('Testing signup with mismatched passwords...');
 
         // Navigate to signup page
-        await driver.get(`${BASE_URL}/#/signup`);
+        await driver.get(`${BASE_URL}/signup`);
         await driver.wait(until.elementLocated(By.css('form')), 15000);
 
         const inputs = await driver.findElements(By.css('form input'));
@@ -744,7 +744,7 @@ describe('Candidate E2E Workflow', function() {
         log('Testing unauthorized admin access...');
 
         // Try to access admin routes directly
-        await driver.get(`${BASE_URL}/#/admin/dashboard`);
+        await driver.get(`${BASE_URL}/admin/dashboard`);
         await driver.sleep(2000);
 
         const currentUrl = await driver.getCurrentUrl();
@@ -775,7 +775,7 @@ describe('Candidate E2E Workflow', function() {
         log('Testing login with invalid email format...');
 
         // Navigate to login page
-        await driver.get(`${BASE_URL}/#/login`);
+        await driver.get(`${BASE_URL}/login`);
         await driver.wait(until.elementLocated(By.css('form input[type="email"]')), 10000);
 
         // Enter invalid email format
@@ -831,7 +831,7 @@ describe('Candidate E2E Workflow', function() {
 
         const validPassword = 'password123'; // 12 characters
 
-        await driver.get(`${BASE_URL}/#/signup`);
+        await driver.get(`${BASE_URL}/signup`);
         await driver.wait(until.elementLocated(By.css('form')), 15000);
 
         const inputs = await driver.findElements(By.css('form input'));
@@ -868,7 +868,7 @@ describe('Candidate E2E Workflow', function() {
       try {
         log('Testing login with correct credentials...');
 
-        await driver.get(`${BASE_URL}/#/login`);
+        await driver.get(`${BASE_URL}/login`);
         await driver.wait(until.elementLocated(By.css('form input[type="email"]')), 10000);
 
         const emailInput = await driver.findElement(By.css('form input[type="email"]'));
@@ -913,7 +913,7 @@ describe('Candidate E2E Workflow', function() {
 
         const longName = 'A'.repeat(150); // 150 chars, should be limited to 100
 
-        await driver.get(`${BASE_URL}/#/signup`);
+        await driver.get(`${BASE_URL}/signup`);
         await driver.wait(until.elementLocated(By.css('form')), 15000);
 
         const inputs = await driver.findElements(By.css('form input'));
@@ -957,7 +957,7 @@ describe('Candidate E2E Workflow', function() {
 
         const longEmail = 'a'.repeat(250) + '@test.com'; // Very long email
 
-        await driver.get(`${BASE_URL}/#/signup`);
+        await driver.get(`${BASE_URL}/signup`);
         await driver.wait(until.elementLocated(By.css('form')), 15000);
 
         const inputs = await driver.findElements(By.css('form input'));
@@ -997,7 +997,7 @@ describe('Candidate E2E Workflow', function() {
       try {
         log('Testing phone field length validation...');
 
-        await driver.get(`${BASE_URL}/#/candidate/profile`);
+        await driver.get(`${BASE_URL}/candidate/profile`);
         await driver.wait(until.elementLocated(By.id('personal')), 10000);
 
         const longPhone = '1'.repeat(25); // 25 chars, should be limited to 20
@@ -1030,7 +1030,7 @@ describe('Candidate E2E Workflow', function() {
 
         const longLocation = 'Address Line 1, Address Line 2, Address Line 3, City, State, Country, Pincode '.repeat(5);
 
-        await driver.get(`${BASE_URL}/#/candidate/profile`);
+        await driver.get(`${BASE_URL}/candidate/profile`);
         await driver.wait(until.elementLocated(By.id('personal')), 10000);
 
         const locationInput = await driver.findElement(By.xpath('.//label[contains(., "Location")]/following-sibling::input'));
@@ -1061,7 +1061,7 @@ describe('Candidate E2E Workflow', function() {
 
         const longSkills = 'JavaScript, React, Node.js, Python, Java, SQL, MongoDB, Docker, Kubernetes, AWS, GCP, Azure, Git, CI/CD, DevOps, Microservices, REST API, GraphQL '.repeat(6);
 
-        await driver.get(`${BASE_URL}/#/candidate/profile`);
+        await driver.get(`${BASE_URL}/candidate/profile`);
         await driver.wait(until.elementLocated(By.id('skills')), 10000);
 
         const skillInput = await driver.findElement(By.css('input[placeholder*="skill" i]'));
@@ -1092,7 +1092,7 @@ describe('Candidate E2E Workflow', function() {
 
         const longSummary = 'Worked on multiple projects. '.repeat(150); // > 1000 chars
 
-        await driver.get(`${BASE_URL}/#/candidate/profile`);
+        await driver.get(`${BASE_URL}/candidate/profile`);
         await driver.wait(until.elementLocated(By.id('experience')), 10000);
 
         const summaryTextarea = await driver.findElement(By.css('textarea'));
@@ -1130,7 +1130,7 @@ describe('Candidate E2E Workflow', function() {
 
         const xssName = '<script>alert("XSS")</script>Test';
 
-        await driver.get(`${BASE_URL}/#/signup`);
+        await driver.get(`${BASE_URL}/signup`);
         await driver.wait(until.elementLocated(By.css('form')), 15000);
 
         const inputs = await driver.findElements(By.css('form input'));
@@ -1173,7 +1173,7 @@ describe('Candidate E2E Workflow', function() {
 
         const sqliPayload = "' OR '1'='1";
 
-        await driver.get(`${BASE_URL}/#/candidate/jobs`);
+        await driver.get(`${BASE_URL}/candidate/jobs`);
         await driver.sleep(2000);
 
         // Try to find search input and inject SQL
@@ -1208,7 +1208,7 @@ describe('Candidate E2E Workflow', function() {
 
         const xssPayload = '<img src=x onerror=alert("XSS")>';
 
-        await driver.get(`${BASE_URL}/#/candidate/profile`);
+        await driver.get(`${BASE_URL}/candidate/profile`);
         await driver.wait(until.elementLocated(By.id('personal')), 10000);
 
         // Inject XSS in location field
@@ -1232,9 +1232,9 @@ describe('Candidate E2E Workflow', function() {
         await driver.sleep(2000);
 
         // Navigate away and back to check if XSS is stored
-        await driver.get(`${BASE_URL}/#/candidate/dashboard`);
+        await driver.get(`${BASE_URL}/candidate/dashboard`);
         await driver.sleep(2000);
-        await driver.get(`${BASE_URL}/#/candidate/profile`);
+        await driver.get(`${BASE_URL}/candidate/profile`);
         await driver.sleep(2000);
 
         const pageSource = await driver.getPageSource();
@@ -1256,11 +1256,11 @@ describe('Candidate E2E Workflow', function() {
       try {
         log('Testing rate limiting on login...');
 
-        await driver.get(`${BASE_URL}/#/login`);
+        await driver.get(`${BASE_URL}/login`);
 
         // Try multiple rapid login attempts
         for (let i = 0; i < 10; i++) {
-          await driver.get(`${BASE_URL}/#/login`);
+          await driver.get(`${BASE_URL}/login`);
           await driver.wait(until.elementLocated(By.css('form')), 5000);
 
           const emailInput = await driver.findElement(By.css('form input[type="email"]'));
@@ -1306,7 +1306,7 @@ describe('Candidate E2E Workflow', function() {
         log('Testing IDOR vulnerability...');
 
         // Try to access another candidate's profile directly
-        await driver.get(`${BASE_URL}/#/candidate/profile/2`);
+        await driver.get(`${BASE_URL}/candidate/profile/2`);
         await driver.sleep(2000);
 
         const pageSource = await driver.getPageSource();
@@ -1333,7 +1333,7 @@ describe('Candidate E2E Workflow', function() {
       try {
         log('Testing weak password validation...');
 
-        await driver.get(`${BASE_URL}/#/signup`);
+        await driver.get(`${BASE_URL}/signup`);
         await driver.wait(until.elementLocated(By.css('form')), 15000);
 
         const inputs = await driver.findElements(By.css('form input'));
@@ -1374,7 +1374,7 @@ describe('Candidate E2E Workflow', function() {
         log('Testing CSRF protection...');
 
         // This test checks if CSRF token is present in forms
-        await driver.get(`${BASE_URL}/#/candidate/profile`);
+        await driver.get(`${BASE_URL}/candidate/profile`);
         await driver.wait(until.elementLocated(By.css('form')), 10000);
 
         const pageSource = await driver.getPageSource();
@@ -1400,7 +1400,7 @@ describe('Candidate E2E Workflow', function() {
         log('Testing JWT token expiration...');
 
         // Login and get token
-        await driver.get(`${BASE_URL}/#/login`);
+        await driver.get(`${BASE_URL}/login`);
         await driver.wait(until.elementLocated(By.css('form')), 10000);
 
         const emailInput = await driver.findElement(By.css('form input[type="email"]'));
@@ -1450,7 +1450,7 @@ describe('Candidate E2E Workflow', function() {
 
         const htmlInput = '<div style="color:red">Styled Text</div><script>alert(1)</script>';
 
-        await driver.get(`${BASE_URL}/#/candidate/profile`);
+        await driver.get(`${BASE_URL}/candidate/profile`);
         await driver.wait(until.elementLocated(By.id('personal')), 10000);
 
         const locationInput = await driver.findElement(By.xpath('.//label[contains(., "Location")]/following-sibling::input'));
@@ -1494,7 +1494,7 @@ describe('Candidate E2E Workflow', function() {
         log('Testing session expiration...');
 
         // Login first
-        await driver.get(`${BASE_URL}/#/login`);
+        await driver.get(`${BASE_URL}/login`);
         await driver.wait(until.elementLocated(By.css('form')), 10000);
 
         const emailInput = await driver.findElement(By.css('form input[type="email"]'));
@@ -1527,7 +1527,7 @@ describe('Candidate E2E Workflow', function() {
         // If session never expires, it's a vulnerability
         if (sessionData.hasUser && sessionData.hasToken) {
           // Check if we can access dashboard after "long" time
-          await driver.get(`${BASE_URL}/#/candidate/dashboard`);
+          await driver.get(`${BASE_URL}/candidate/dashboard`);
           await driver.sleep(1000);
 
           const currentUrl = await driver.getCurrentUrl();

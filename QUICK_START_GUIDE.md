@@ -4,7 +4,7 @@
 
 ### Step 1: Access Admin Panel
 ```
-URL: http://localhost:8189/interview_assist/#/admin/panels
+URL: http://localhost:8189/interview_assist/admin/panels
 ```
 
 ### Step 2: Download Template
