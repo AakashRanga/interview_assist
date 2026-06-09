@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { DashboardLayout } from '../components/dashboard/DashboardLayout';
@@ -21,8 +20,7 @@ import {
   CheckCircleIcon,
   ClockIcon,
   XCircleIcon,
-  MoreVerticalIcon,
-  DownloadIcon } from
+  MoreVerticalIcon } from
 'lucide-react';
 
 export function AdminCandidates() {
@@ -32,7 +30,6 @@ export function AdminCandidates() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [groupFilter, setGroupFilter] = useState<string>('all');
   const [openMenu, setOpenMenu] = useState<string | null>(null);
-  const [menuCoords, setMenuCoords] = useState<{ top: number; left: number } | null>(null);
   const [rescheduleOpen, setRescheduleOpen] = useState(false);
   const [reassignOpen, setReassignOpen] = useState(false);
   const [feedbackViewOpen, setFeedbackViewOpen] = useState(false);
@@ -62,30 +59,6 @@ export function AdminCandidates() {
   useEffect(() => {
     fetchCandidates();
   }, []);
-
-  useEffect(() => {
-    const handleOutsideClick = (e: MouseEvent) => {
-      if (openMenu) {
-        const target = e.target as HTMLElement;
-        if (!target.closest('.candidate-menu-container')) {
-          setOpenMenu(null);
-          setMenuCoords(null);
-        }
-      }
-    };
-    const handleScroll = () => {
-      if (openMenu) {
-        setOpenMenu(null);
-        setMenuCoords(null);
-      }
-    };
-    document.addEventListener('mousedown', handleOutsideClick);
-    window.addEventListener('scroll', handleScroll, true);
-    return () => {
-      document.removeEventListener('mousedown', handleOutsideClick);
-      window.removeEventListener('scroll', handleScroll, true);
-    };
-  }, [openMenu]);
 
   const handleAction = (action: string, candidate: Candidate) => {
     setSelectedCandidate(candidate);
@@ -189,48 +162,6 @@ export function AdminCandidates() {
     if (groupFilter !== 'all' && c.panelGroupId !== groupFilter) return false;
     return true;
   });
-
-  const handleDownloadExcel = async () => {
-    if (filtered.length === 0) {
-      toast.error('No candidates to download');
-      return;
-    }
-
-    const params = new URLSearchParams();
-    if (search) params.append('search', search);
-    if (statusFilter !== 'all') params.append('status', statusFilter);
-    if (groupFilter !== 'all') params.append('panelGroupId', groupFilter);
-
-    const toastId = toast.loading('Preparing Excel download...');
-
-    try {
-      const url = `${API_BASE_URL}/admin/candidates/export-excel?${params.toString()}`;
-      const response = await fetch(url);
-      
-      if (!response.ok) {
-        throw new Error('Failed to generate Excel download');
-      }
-
-      const blob = await response.blob();
-      const downloadUrl = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = downloadUrl;
-      
-      const filename = `candidates_export_${new Date().toISOString().slice(0, 10)}.xlsx`;
-      link.setAttribute('download', filename);
-      link.style.visibility = 'hidden';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(downloadUrl);
-      
-      toast.dismiss(toastId);
-      toast.success('Excel downloaded successfully');
-    } catch (err: any) {
-      toast.dismiss(toastId);
-      toast.error(err.message || 'Failed to download Excel file');
-    }
-  };
 
   const statuses = [
     'all',
@@ -390,14 +321,6 @@ export function AdminCandidates() {
                 </option>
               )}
             </select>
-            <Button
-              variant="outline"
-              onClick={handleDownloadExcel}
-              className="ml-auto flex items-center gap-1.5 bg-white/70 border border-white/60 text-xs text-secondary hover:bg-white/95 rounded-xl px-4 py-2"
-            >
-              <DownloadIcon className="w-3.5 h-3.5" />
-              Download Excel
-            </Button>
           </div>
         </GlassCard>
       </motion.div>
@@ -416,8 +339,8 @@ export function AdminCandidates() {
           delay: 0.25
         }}>
         
-        <GlassCard className="overflow-visible">
-          <div className="overflow-x-auto min-h-[280px] pb-12">
+        <GlassCard className="overflow-hidden">
+          <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-white/40 border-b border-white/60">
                 <tr>
@@ -530,28 +453,69 @@ export function AdminCandidates() {
                             {c.status}
                           </Badge>
                         </td>
-                        <td className="px-4 py-3 text-right relative candidate-menu-container">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (openMenu === c.id) {
-                                setOpenMenu(null);
-                                setMenuCoords(null);
-                              } else {
-                                const rect = e.currentTarget.getBoundingClientRect();
-                                setMenuCoords({
-                                  top: rect.bottom,
-                                  left: rect.right - 176
-                                });
-                                setSelectedCandidate(c);
-                                setOpenMenu(c.id);
-                              }
-                            }}
-                            className="p-1.5 hover:bg-white/60 rounded-lg transition-colors">
+                      <td className="px-4 py-3 text-right relative">
+                        <button
+                          onClick={() =>
+                          setOpenMenu(openMenu === c.id ? null : c.id)
+                          }
+                          className="p-1.5 hover:bg-white/60 rounded-lg transition-colors">
+                          
+                          <MoreVerticalIcon className="w-4 h-4 text-secondary" />
+                        </button>
+                        {openMenu === c.id &&
+                        <motion.div
+                          initial={{
+                            opacity: 0,
+                            y: -5
+                          }}
+                          animate={{
+                            opacity: 1,
+                            y: 0
+                          }}
+                          className="absolute right-4 top-full mt-1 w-44 bg-white border border-slate-200 rounded-xl shadow-xl z-20 overflow-hidden">
+                          
+
+                            <button
+                            onClick={() => handleAction('reschedule', c)}
+                            className="w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-slate-50 transition-colors">
                             
-                            <MoreVerticalIcon className="w-4 h-4 text-secondary" />
-                          </button>
-                        </td>
+                              Reschedule
+                            </button>
+                            <button
+                            onClick={() => handleAction('reassign', c)}
+                            className="w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-slate-50 transition-colors">
+                            
+                              Reassign Panel
+                            </button>
+                            <button
+                            onClick={() => handleAction('feedback', c)}
+                            className="w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-slate-50 transition-colors">
+                            
+                              View Feedback
+                            </button>
+                            {c.status !== 'Selected' && c.status !== 'Rejected' && (
+                              <>
+                                <button
+                                onClick={() => {
+                                  setOpenMenu(null);
+                                  handleApproveReject('Selected', c.id);
+                                }}
+                                className="w-full text-left px-3 py-2 text-xs text-green-600 hover:bg-green-50/50 transition-colors font-medium border-t border-slate-100">
+                                  Approve
+                                </button>
+                                <button
+                                onClick={() => {
+                                  setOpenMenu(null);
+                                  handleApproveReject('Rejected', c.id);
+                                }}
+                                className="w-full text-left px-3 py-2 text-xs text-red-600 hover:bg-red-50/50 transition-colors font-medium">
+                                  Reject
+                                </button>
+                              </>
+                            )}
+                          </motion.div>
+                        }
+                      </td>
                     </motion.tr>);
 
                   })
@@ -671,56 +635,6 @@ export function AdminCandidates() {
         candidate={feedbackViewOpen ? selectedCandidate : null}
         onClose={() => setFeedbackViewOpen(false)}
         viewerRole="admin" />
-
-      {openMenu && menuCoords && selectedCandidate && createPortal(
-        <div
-          style={{
-            position: 'fixed',
-            top: `${menuCoords.top + 4}px`,
-            left: `${menuCoords.left}px`,
-            zIndex: 9999,
-          }}
-          className="candidate-menu-container w-44 bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden"
-        >
-          <button
-            onClick={() => handleAction('reschedule', selectedCandidate)}
-            className="w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-slate-50 transition-colors font-medium border-b border-slate-100">
-            Reschedule
-          </button>
-          <button
-            onClick={() => handleAction('reassign', selectedCandidate)}
-            className="w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-slate-50 transition-colors font-medium border-b border-slate-100">
-            Reassign Panel
-          </button>
-          <button
-            onClick={() => handleAction('feedback', selectedCandidate)}
-            className="w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-slate-50 transition-colors font-medium">
-            View Feedback
-          </button>
-          {selectedCandidate.status !== 'Selected' && selectedCandidate.status !== 'Rejected' && (
-            <>
-              <button
-                onClick={() => {
-                  setOpenMenu(null);
-                  handleApproveReject('Selected', selectedCandidate.id);
-                }}
-                className="w-full text-left px-3 py-2 text-xs text-green-600 hover:bg-green-50/50 transition-colors font-medium border-t border-slate-100">
-                Approve
-              </button>
-              <button
-                onClick={() => {
-                  setOpenMenu(null);
-                  handleApproveReject('Rejected', selectedCandidate.id);
-                }}
-                className="w-full text-left px-3 py-2 text-xs text-red-600 hover:bg-red-50/50 transition-colors font-medium">
-                Reject
-              </button>
-            </>
-          )}
-        </div>,
-        document.body
-      )}
       
-    </DashboardLayout>
-  );
+    </DashboardLayout>);
 }

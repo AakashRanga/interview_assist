@@ -13,7 +13,6 @@ class JobRole(Base):
     total_vacancy = Column(Integer, nullable=False, default=1)
     job_type = Column(String(50), nullable=False, default="Online")
     venue = Column(String(255), nullable=True)
-    level = Column(String(50), nullable=True)
     description = Column(String(1000), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     is_visible = Column(Boolean, default=True, nullable=False)

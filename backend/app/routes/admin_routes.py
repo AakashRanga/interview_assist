@@ -355,7 +355,6 @@ class CandidateAdminDetail(BaseModel):
     meetLink: Optional[str] = None
     venue: Optional[str] = None
     appliedDate: str
-    roleId: Optional[int] = None
 
 
 class UpdateCandidateStatusRequest(BaseModel):
@@ -489,115 +488,10 @@ def get_admin_candidates():
                     resumeUrl=resume_url,
                     meetLink=meet_link,
                     venue=venue,
-                    appliedDate=applied_date_str,
-                    roleId=job_id
+                    appliedDate=applied_date_str
                 )
             )
         return result
-    finally:
-        db.close()
-
-
-@router.get("/candidates/export-excel")
-def export_candidates_excel(
-    search: Optional[str] = None,
-    status: Optional[str] = None,
-    panelGroupId: Optional[str] = None
-):
-    """
-    Export matching candidates and their application details directly to Excel.
-    """
-    db = SessionLocal()
-    try:
-        candidates = db.query(Candidate).all()
-        filtered_candidates = []
-        
-        for c in candidates:
-            # 1. Fetch latest application
-            application = db.query(CandidateApplication).filter(
-                CandidateApplication.candidate_id == c.id
-            ).order_by(CandidateApplication.created_at.desc()).first()
-            
-            role_id = ""
-            role_name = ""
-            app_status = c.status
-            
-            if application:
-                role_id = application.role_id
-                role_name = application.role.title if application.role else "Unknown Role"
-                app_status = application.status
-
-            # Match frontend filtering
-            if search and search.lower() not in c.full_name.lower():
-                continue
-            if status and status != "all" and app_status != status:
-                continue
-            if panelGroupId and panelGroupId != "all" and c.panel_group_id != panelGroupId:
-                continue
-
-            filtered_candidates.append({
-                "id": c.id,
-                "name": c.full_name,
-                "email": c.email,
-                "mobile": c.phone or "",
-                "role_id": role_id,
-                "role_name": role_name,
-                "status": app_status
-            })
-            
-        # Create a new workbook
-        wb = openpyxl.Workbook()
-        ws = wb.active
-        ws.title = "Candidates"
-        
-        # Headers
-        headers = ["Candidate ID", "Name", "Email", "Mobile", "Role ID", "Role Name", "Status"]
-        ws.append(headers)
-        
-        for fc in filtered_candidates:
-            ws.append([
-                fc["id"],
-                fc["name"],
-                fc["email"],
-                fc["mobile"],
-                fc["role_id"],
-                fc["role_name"],
-                fc["status"]
-            ])
-            
-        # Style headers
-        from openpyxl.styles import Font, PatternFill, Alignment
-        header_font = Font(bold=True, color="FFFFFF")
-        header_fill = PatternFill(start_color="1F4E78", end_color="1F4E78", fill_type="solid")
-        for col_idx in range(1, 8):
-            cell = ws.cell(row=1, column=col_idx)
-            cell.font = header_font
-            cell.fill = header_fill
-            cell.alignment = Alignment(horizontal="center")
-            
-        # Set column widths automatically
-        for col in ws.columns:
-            vals = [cell.value for cell in col]
-            max_len = max(len(str(v or '')) for v in vals)
-            col_letter = openpyxl.utils.get_column_letter(col[0].column)
-            ws.column_dimensions[col_letter].width = max(max_len + 3, 12)
-            
-        # Save to BytesIO
-        output = io.BytesIO()
-        wb.save(output)
-        output.seek(0)
-        
-        filename = f"candidates_export_{datetime.now().strftime('%Y-%m-%d')}.xlsx"
-        headers_resp = {
-            'Content-Disposition': f'attachment; filename="{filename}"'
-        }
-        return StreamingResponse(
-            output,
-            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            headers=headers_resp
-        )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
     finally:
         db.close()
 
@@ -934,7 +828,6 @@ class AdminJobRoleResponse(BaseModel):
     totalVacancy: int
     jobType: str
     venue: Optional[str] = None
-    level: Optional[str] = None
     description: Optional[str] = None
     createdAt: str
     isVisible: bool
@@ -1092,7 +985,6 @@ class CreateJobRoleRequest(BaseModel):
     totalVacancy: int
     jobType: str
     venue: Optional[str] = None
-    level: Optional[str] = None
     description: Optional[str] = None
 
 
@@ -1117,7 +1009,6 @@ def get_admin_roles():
                     totalVacancy=r.total_vacancy,
                     jobType=r.job_type,
                     venue=r.venue,
-                    level=r.level,
                     description=r.description,
                     createdAt=created_str,
                     isVisible=r.is_visible
@@ -1139,7 +1030,6 @@ def create_job_role(data: CreateJobRoleRequest):
             total_vacancy=data.totalVacancy,
             job_type=data.jobType,
             venue=data.venue,
-            level=data.level,
             description=data.description,
             is_visible=True
         )

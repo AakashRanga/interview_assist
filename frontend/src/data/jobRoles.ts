@@ -7,7 +7,6 @@ export interface JobRole {
   jobType: 'Online' | 'Offline';
   description?: string;
   venue?: string;
-  level?: string;
   createdAt: string;
   isVisible?: boolean;
 }

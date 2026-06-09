@@ -49,12 +49,6 @@ with engine.begin() as connection:
                     "ALTER TABLE job_roles ADD COLUMN is_visible BOOLEAN NOT NULL DEFAULT TRUE"
                 )
             )
-        if "level" not in existing_columns:
-            connection.execute(
-                text(
-                    "ALTER TABLE job_roles ADD COLUMN level VARCHAR(50) NULL"
-                )
-            )
 
         # candidates table columns check
         result_cand = connection.execute(
