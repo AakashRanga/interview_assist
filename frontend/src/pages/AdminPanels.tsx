@@ -13,6 +13,7 @@ import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
 import { Modal } from '../components/ui/Modal';
 import { Input } from '../components/ui/Input';
+import { API_BASE_URL } from '../config';
 import {
   PlusIcon,
   UsersIcon,
@@ -343,25 +344,64 @@ export function AdminPanels() {
   const scheduleRef = useRef<HTMLDivElement>(null);
   const excelInputRef = useRef<HTMLInputElement>(null);
   const selectedPanel = panels.find((p) => p.id === selectedPanelId) || null;
-  const handleExcelImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleExcelImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    toast.success(`Imported panel members from ${file.name}`);
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch(`${API_BASE_URL}/admin/import-panels`, {
+        method: 'POST',
+        headers: {
+          'admin_email': localStorage.getItem('userEmail') || 'admin@example.com',
+        },
+        body: formData
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        if (data.failed_count === 0) {
+          toast.success(`Successfully imported ${data.imported_count} panel members`);
+        } else {
+          toast.warning(`Imported ${data.imported_count} records, ${data.failed_count} failed`);
+          if (data.errors && data.errors.length > 0) {
+            console.log('Import errors:', data.errors);
+            const errorMsg = data.errors.slice(0, 3).map((e: any) => `Row ${e.row}: ${e.error}`).join('\n');
+            toast.error(`Errors:\n${errorMsg}`);
+          }
+        }
+      } else {
+        toast.error(data.detail || 'Import failed');
+      }
+    } catch (error) {
+      console.error('Import error:', error);
+      toast.error('Failed to import file');
+    }
     e.target.value = '';
   };
-  const handleDownloadTemplate = () => {
-    const csv =
-    'Panel Name,Member Name,Email,Role\nHR,John Smith,john@example.com,HR Lead\nTechnical,Jane Doe,jane@example.com,Senior Engineer\n';
-    const blob = new Blob([csv], {
-      type: 'text/csv'
-    });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'panel-members-template.csv';
-    a.click();
-    URL.revokeObjectURL(url);
-    toast.success('Template downloaded');
+
+  const handleDownloadTemplate = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/download-panel-template`);
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'panel_import_template.xlsx';
+        a.click();
+        URL.revokeObjectURL(url);
+        toast.success('Template downloaded');
+      } else {
+        toast.error('Failed to download template');
+      }
+    } catch (error) {
+      console.error('Download error:', error);
+      toast.error('Failed to download template');
+    }
   };
   useEffect(() => {
     if (selectedPanelId && scheduleRef.current) {

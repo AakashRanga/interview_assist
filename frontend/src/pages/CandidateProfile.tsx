@@ -266,7 +266,12 @@ export function CandidateProfile() {
 
   const getDocumentUrl = (path?: string) => {
     if (!path) return undefined;
-    return `${API_BASE_URL}${path}`;
+    // If it's already a full URL, return as is
+    if (path.startsWith('http')) return path;
+    // If path starts with /, it's a proper relative path
+    if (path.startsWith('/')) return `${API_BASE_URL}${path}`;
+    // Otherwise, add leading slash
+    return `${API_BASE_URL}/${path}`;
   };
 
   const countFilled = (value?: string | null) =>
@@ -605,7 +610,7 @@ export function CandidateProfile() {
               {sections.map((s) =>
               <a
                 key={s.id}
-                href={`#${s.id}`}
+                href={`/#/candidate/profile#${s.id}`}
                 className="flex items-center space-x-3 px-3 py-2.5 rounded-xl text-sm text-secondary/70 hover:bg-white/60 hover:text-secondary transition-all">
                 
                   <s.icon className="w-4 h-4" />

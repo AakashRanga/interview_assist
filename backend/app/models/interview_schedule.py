@@ -15,9 +15,9 @@ class InterviewSchedule(Base):
     start_time = Column(Time, nullable=False)
     end_time = Column(Time, nullable=False)
     interview_status = Column(String(100), nullable=False, default="scheduled")
-    panel_id = Column(Integer, ForeignKey("panels.id"), nullable=True, index=True)
+    # Stores JSON array of panel IDs e.g. "[1,2,3,4,5]" for parallel panels
+    panel_id = Column(String(500), nullable=True, index=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
     candidate = relationship("Candidate", back_populates="interview_schedules")
-    panel = relationship("Panel")

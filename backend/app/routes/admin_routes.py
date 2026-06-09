@@ -1,8 +1,13 @@
 from typing import Optional, List
-from fastapi import APIRouter, HTTPException, Header
-from pydantic import BaseModel, EmailStr
+from fastapi import APIRouter, HTTPException, Header, UploadFile, File
+from fastapi.responses import StreamingResponse
+from pydantic import BaseModel
 from app.database import SessionLocal
 from app.models.user import User
+from app.services.excel_service import ExcelService
+import openpyxl
+import io
+import json
 from app.models.candidate import Candidate
 from app.models.candidate_application import CandidateApplication
 from app.models.interview_schedule import InterviewSchedule
@@ -11,7 +16,6 @@ from app.models.panel import Panel
 from app.services.notification_service import NotificationService
 from app.models.notification import ActivityType, NotificationType
 from app.workers.tasks import schedule_interview_task
-from app.models.panel import Panel
 from datetime import datetime, date, time, timedelta
 from zoneinfo import ZoneInfo
 
@@ -209,12 +213,25 @@ def schedule_interview(data: ScheduleInterviewRequest):
         # Resolve job_id if not provided
         job_id = data.job_id
         application = None
+        job_type = "Online"
+        venue = None
         if not job_id:
             application = db.query(CandidateApplication).filter(
                 CandidateApplication.candidate_id == data.candidate_id
             ).order_by(CandidateApplication.created_at.desc()).first()
             if application:
                 job_id = application.role_id
+                if application.role:
+                    job_type = application.role.job_type or "Online"
+                    venue = application.role.venue
+        else:
+            # Check job_type directly from job role if provided
+            job_role = db.query(JobRole).filter(JobRole.id == job_id).first()
+            if job_role:
+                job_type = job_role.job_type or "Online"
+                venue = job_role.venue
+
+        is_offline = job_type and job_type.lower() == "offline"
 
         # Step 3: Find available slot (uses IST)
         IST = ZoneInfo('Asia/Kolkata')
@@ -281,8 +298,23 @@ def schedule_interview(data: ScheduleInterviewRequest):
             except Exception as notif_error:
                 print(f"Failed to create notification: {notif_error}")
 
-        # Step 5: Queue Celery task
-        schedule_interview_task.delay(schedule.id, data.candidate_id)
+        # Step 5: Queue Celery task only for online interviews
+        if not is_offline:
+            schedule_interview_task.delay(schedule.id, data.candidate_id)
+        else:
+            # For offline interviews, just mark as scheduled without gmeet link
+            schedule.interview_status = "scheduled"
+            db.add(schedule)
+            db.commit()
+
+        if is_offline:
+            return {
+                "status": "scheduled",
+                "message": f"Interview scheduled for {target_date} {start_time}-{end_time} at venue: {venue or 'TBD'}",
+                "schedule_id": schedule.id,
+                "venue": venue,
+                "mode": "offline"
+            }
 
         return {
             "status": "queued",
@@ -313,6 +345,7 @@ class CandidateAdminDetail(BaseModel):
     mode: str
     panelId: Optional[str] = ""
     panelGroupId: Optional[str] = ""
+    panelIds: List[int] = []  # Panel IDs from interview schedule (JSON)
     profileComplete: int
     avatar: str
     skills: List[str]
@@ -376,7 +409,8 @@ def get_admin_candidates():
             interview_date = None
             interview_time = None
             meet_link = None
-            
+            schedule_panel_ids = []
+
             if schedule:
                 interview_date = schedule.date.isoformat() if schedule.date else None
                 if schedule.start_time and schedule.end_time:
@@ -386,6 +420,12 @@ def get_admin_candidates():
                 elif schedule.start_time:
                     interview_time = schedule.start_time.strftime("%I:%M %p")
                 meet_link = schedule.gmeet_link
+                # Parse panel_ids from JSON string (e.g., "[1,2,3,4,5]")
+                if schedule.panel_id:
+                    try:
+                        schedule_panel_ids = json.loads(schedule.panel_id)
+                    except (json.JSONDecodeError, TypeError):
+                        schedule_panel_ids = []
 
             # 3. Calculate profileComplete
             profile_pct = 60
@@ -421,7 +461,8 @@ def get_admin_candidates():
                 if c.resume_path.startswith("http"):
                     resume_url = c.resume_path
                 else:
-                    resume_url = f"http://localhost:8189{c.resume_path}"
+                    # Return relative path - frontend will construct full URL
+                    resume_url = c.resume_path
 
             avatar_url = f"https://api.dicebear.com/7.x/avataaars/svg?seed={c.id}"
 
@@ -438,6 +479,7 @@ def get_admin_candidates():
                     mode=job_type,
                     panelId=c.panel_id or "",
                     panelGroupId=c.panel_group_id or "",
+                    panelIds=schedule_panel_ids,
                     profileComplete=profile_pct,
                     avatar=avatar_url,
                     skills=skills_list,
@@ -540,31 +582,50 @@ def update_candidate_status(candidate_id: int, data: UpdateCandidateStatusReques
                     panel_by_type[p.interview_type] = p
 
             job_id = application.role_id if application else None
+            job_type = "Online"
+            venue = None
+            if application and application.role:
+                job_type = application.role.job_type or "Online"
+                venue = application.role.venue
+            is_offline = job_type and job_type.lower() == "offline"
 
-            schedules_created = []
+            # Collect all panel IDs for the 5-panel interview
+            panel_ids = []
             for panel_type in ["HR", "Technical", "P1", "P2", "P3"]:
                 panel = panel_by_type.get(panel_type)
-                panel_id = panel.id if panel else None
+                if panel:
+                    panel_ids.append(panel.id)
 
-                schedule = InterviewSchedule(
-                    candidate_id=candidate_id,
-                    job_id=job_id,
-                    date=target_date,
-                    start_time=start_t,
-                    end_time=end_t,
-                    panel_id=panel_id,
-                    interview_status="pending"
-                )
-                db.add(schedule)
-                schedules_created.append(schedule)
+            # Create ONE schedule with all panel IDs as JSON
+            import json
+            panel_ids_json = json.dumps(panel_ids) if panel_ids else None
 
+            schedule = InterviewSchedule(
+                candidate_id=candidate_id,
+                job_id=job_id,
+                date=target_date,
+                start_time=start_t,
+                end_time=end_t,
+                panel_id=panel_ids_json,
+                interview_status="pending"
+            )
+            db.add(schedule)
             db.flush()
 
-            # Schedule background tasks
-            for sched in schedules_created:
-                schedule_interview_task.delay(sched.id, candidate_id)
+            # Schedule background task only for online interviews (single task)
+            if not is_offline:
+                schedule_interview_task.delay(schedule.id, candidate_id)
+            else:
+                # For offline interviews, mark as scheduled without gmeet link
+                schedule.interview_status = "scheduled"
+                db.add(schedule)
+                db.commit()
 
             try:
+                if is_offline:
+                    notif_message = f"Your parallel 5-panel interviews have been scheduled for {target_date} from 11:00 AM to 12:00 PM at venue: {venue or 'TBD'}."
+                else:
+                    notif_message = f"Your parallel 5-panel interviews have been scheduled for {target_date} from 11:00 AM to 12:00 PM."
                 NotificationService.create_activity_and_notify(
                     db=db,
                     candidate_id=candidate.id,
@@ -572,7 +633,7 @@ def update_candidate_status(candidate_id: int, data: UpdateCandidateStatusReques
                     activity_type=ActivityType.INTERVIEW_SCHEDULED,
                     activity_title=f"Parallel interviews scheduled for {application.role.title if application and application.role else 'your role'}",
                     notification_title="Interviews Scheduled",
-                    notification_message=f"Your parallel 5-panel interviews have been scheduled for {target_date} from 11:00 AM to 12:00 PM.",
+                    notification_message=notif_message,
                     reference_id=application.id if application else None,
                     notification_type=NotificationType.SUCCESS,
                     icon="calendar",
@@ -662,7 +723,15 @@ def reschedule_interview(candidate_id: int, data: RescheduleInterviewRequest):
         ).order_by(CandidateApplication.created_at.desc()).first()
         if application:
             job_id = application.role_id
-            
+
+        # Check job_type for offline interviews
+        job_type = "Online"
+        venue = None
+        if application and application.role:
+            job_type = application.role.job_type or "Online"
+            venue = application.role.venue
+        is_offline = job_type and job_type.lower() == "offline"
+
         slot_duration = timedelta(hours=1)
         end_time = (datetime.combine(target_date, target_time) + slot_duration).time()
 
@@ -697,6 +766,10 @@ def reschedule_interview(candidate_id: int, data: RescheduleInterviewRequest):
             db.commit()
 
         try:
+            if is_offline:
+                notif_message = f"Your interview has been rescheduled for {target_date} at {target_time.strftime('%I:%M %p')} at venue: {venue or 'TBD'}."
+            else:
+                notif_message = f"Your interview has been rescheduled for {target_date} at {target_time.strftime('%I:%M %p')}."
             NotificationService.create_activity_and_notify(
                 db=db,
                 candidate_id=candidate.id,
@@ -704,7 +777,7 @@ def reschedule_interview(candidate_id: int, data: RescheduleInterviewRequest):
                 activity_type=ActivityType.INTERVIEW_SCHEDULED,
                 activity_title=f"Interview rescheduled for {application.role.title if application and application.role else 'your role'}",
                 notification_title="Interview Rescheduled",
-                notification_message=f"Your interview has been rescheduled for {target_date} at {target_time.strftime('%I:%M %p')}.",
+                notification_message=notif_message,
                 reference_id=application.id if application else None,
                 notification_type=NotificationType.SUCCESS,
                 icon="calendar",
@@ -714,7 +787,22 @@ def reschedule_interview(candidate_id: int, data: RescheduleInterviewRequest):
         except Exception as notif_error:
             print(f"Failed to create notification: {notif_error}")
 
-        schedule_interview_task.delay(schedule.id, candidate.id)
+        if not is_offline:
+            schedule_interview_task.delay(schedule.id, candidate.id)
+        else:
+            # For offline interviews, mark as scheduled without gmeet link
+            schedule.interview_status = "scheduled"
+            db.add(schedule)
+            db.commit()
+
+        if is_offline:
+            return {
+                "status": "success",
+                "message": f"Interview rescheduled to {target_date} {target_time} at venue: {venue or 'TBD'}.",
+                "schedule_id": schedule.id,
+                "venue": venue,
+                "mode": "offline"
+            }
 
         return {
             "status": "success",
@@ -743,6 +831,151 @@ class AdminJobRoleResponse(BaseModel):
     description: Optional[str] = None
     createdAt: str
     isVisible: bool
+
+
+# ============ Excel Import ============
+
+class ImportPanelResponse(BaseModel):
+    status: str
+    message: str
+    imported_count: int
+    failed_count: int
+    errors: List[dict] = []
+
+
+@router.post("/import-panels", response_model=ImportPanelResponse)
+async def import_panels(file: UploadFile = File(...)):
+    """
+    Import panel members from Excel file.
+
+    Column A: full_name
+    Column B: email
+    Column C: password
+    Column D: role
+    Column E: hr_panelists_name
+    Column F: hr_panelist_grade
+    Column G: hr_panel_mobile
+    Column H: tag_coordinator
+    Column I: slots
+    Column J: team_link
+    Column K: interview_type
+    """
+
+    db = SessionLocal()
+    imported_count = 0
+    failed_count = 0
+    errors = []
+
+    try:
+        content = await file.read()
+        workbook = openpyxl.load_workbook(io.BytesIO(content))
+        worksheet = workbook.active
+
+        for row_idx, row in enumerate(
+            worksheet.iter_rows(min_row=2, values_only=True),
+            start=2
+        ):
+            try:
+                full_name = row[0]
+                email = row[1]
+                password = row[2]
+                role = row[3] or "panel"
+
+                hr_panelists_name = row[4]
+                hr_panelist_grade = row[5]
+                hr_panel_mobile = row[6]
+                tag_coordinator = row[7]
+                slots = row[8]
+                team_link = row[9]
+                interview_type = row[10]
+
+                if not full_name or not email or not password:
+                    errors.append({
+                        "row": row_idx,
+                        "error": "Missing required fields: full_name, email, or password"
+                    })
+                    failed_count += 1
+                    continue
+
+                existing_user = (
+                    db.query(User)
+                    .filter(User.email == str(email).strip())
+                    .first()
+                )
+
+                if existing_user:
+                    errors.append({
+                        "row": row_idx,
+                        "error": f"Email {email} already exists"
+                    })
+                    failed_count += 1
+                    continue
+
+                user = User(
+                    full_name=str(full_name).strip(),
+                    email=str(email).strip(),
+                    password=str(password).strip(),
+                    role=str(role).strip()
+                )
+
+                db.add(user)
+                db.flush()
+
+                panel = Panel(
+                    hr_panelists_name=str(hr_panelists_name).strip() if hr_panelists_name else None,
+                    hr_panelist_grade=str(hr_panelist_grade).strip() if hr_panelist_grade else None,
+                    hr_panel_mobile=str(hr_panel_mobile).strip() if hr_panel_mobile else None,
+                    tag_coordinator=str(tag_coordinator).strip() if tag_coordinator else None,
+                    slots=str(slots).strip() if slots else None,
+                    team_link=str(team_link).strip() if team_link else None,
+                    interview_type=str(interview_type).strip() if interview_type else None,
+                )
+
+                db.add(panel)
+                db.commit()
+
+                imported_count += 1
+
+            except Exception as row_error:
+                db.rollback()
+
+                errors.append({
+                    "row": row_idx,
+                    "error": str(row_error)
+                })
+
+                failed_count += 1
+
+        return {
+            "status": "success" if failed_count == 0 else "partial",
+            "message": f"Import completed. {imported_count} records imported, {failed_count} failed.",
+            "imported_count": imported_count,
+            "failed_count": failed_count,
+            "errors": errors
+        }
+
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+
+    finally:
+        db.close()
+
+@router.get("/download-panel-template")
+def download_panel_template():
+    """
+    Download Excel template for importing panel members
+    """
+    try:
+        template_io = ExcelService.create_panel_import_template()
+        
+        return StreamingResponse(
+            iter([template_io.getvalue()]),
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": "attachment; filename=panel_import_template.xlsx"}
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 class CreateJobRoleRequest(BaseModel):

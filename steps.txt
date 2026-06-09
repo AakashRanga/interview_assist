@@ -38,6 +38,8 @@ backend/
 Install Linux WSL [Windows Subsystem for Linux]
  => Open PowerShell or Command Prompt as an Administrator
  => wsl --install
+ => sudo apt update (To get redis going)
+ => sudo apt install redis-server -y
 
 
 start redis 

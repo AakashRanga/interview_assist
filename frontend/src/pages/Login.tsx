@@ -55,6 +55,7 @@ export function Login() {
         toast.success(`Welcome, ${data.user.full_name}!`);
         localStorage.setItem('user', JSON.stringify(data.user));
         localStorage.setItem('role', data.user.role);
+        localStorage.setItem('userEmail', data.user.email);
         
         const dashboard = getRoleDashboard(data.user.role);
         setTimeout(() => navigate(dashboard), 400);

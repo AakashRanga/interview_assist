@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
+import { useNavigate } from 'react-router-dom';
 import { DashboardLayout } from '../components/dashboard/DashboardLayout';
 import { StatCard } from '../components/dashboard/StatCard';
 import { GlassCard } from '../components/ui/GlassCard';
@@ -18,6 +19,7 @@ import {
   MailIcon } from
 'lucide-react';
 export function CandidateDashboard() {
+  const navigate = useNavigate();
   const [fullName, setFullName] = useState('John Doe');
   const [firstName, setFirstName] = useState('John');
 
@@ -252,7 +254,7 @@ export function CandidateDashboard() {
                   <p className="text-sm text-secondary/70 mb-4 max-w-xs">
                     You haven't applied for any job position. Browse available roles and start your application.
                   </p>
-                  <Button size="sm" onClick={() => window.location.href = '/candidate/profile#preferences'}>
+                  <Button size="sm" onClick={() => navigate('/candidate/profile', { hash: 'preferences' })}>
                     <BriefcaseIcon className="w-3.5 h-3.5 mr-2" />
                     Browse Jobs
                   </Button>

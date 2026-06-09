@@ -8,5 +8,35 @@ export default defineConfig({
   server: {
     port: 8189,
     host: '0.0.0.0',
+    proxy: {
+      '/admin': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+      },
+      '/auth': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+      },
+      '/resume': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+      },
+      '/candidate': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+      },
+      '/notification': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+      },
+      '/user': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+      },
+      '/uploads': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+      },
+    },
   },
 })

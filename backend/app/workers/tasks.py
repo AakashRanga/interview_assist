@@ -75,6 +75,8 @@ def schedule_interview_task(schedule_id, candidate_id):
         # ============================================
 
         job_role_title = " "
+        job_type = "Online"
+        venue = None
 
         if schedule.job_id:
 
@@ -91,6 +93,22 @@ def schedule_interview_task(schedule_id, candidate_id):
 
                 if job_role:
                     job_role_title = job_role.title
+                    job_type = job_role.job_type or "Online"
+                    venue = job_role.venue
+
+        is_offline = job_type and job_type.lower() == "offline"
+
+        # For offline interviews, skip n8n and don't generate gmeet link
+        if is_offline:
+            schedule.interview_status = "scheduled"
+            # Also update candidate_applications status to "Scheduled" if not Selected/Rejected
+            if application and application.status not in ["Selected", "Rejected"]:
+                application.status = "Scheduled"
+            db.commit()
+            return {
+                "status": "skipped",
+                "message": "Offline interview - no gmeet link needed"
+            }
 
         # ============================================
         # PREPARE PAYLOAD FOR N8N
@@ -144,17 +162,13 @@ def schedule_interview_task(schedule_id, candidate_id):
         except Exception as e:
             print(f"Error calling n8n: {str(e)}")
 
-        # Fallback to mock link if n8n failed or returned no hangoutLink
-        if not meet_link:
-            meet_link = f"https://meet.google.com/mock-meet-{schedule_id}"
-            print(f"Falling back to mock GMeet link: {meet_link}")
-
-        # ============================================
-        # UPDATE DATABASE
-        # ============================================
-
-        schedule.gmeet_link = meet_link
-        schedule.interview_status = "scheduled"
+        # Only update if meet_link was successfully generated
+        if meet_link:
+            schedule.gmeet_link = meet_link
+            schedule.interview_status = "scheduled"
+        else:
+            schedule.interview_status = "pending"
+            print("No meet link generated - n8n may have failed")
 
         # Also update candidate_applications status to "Scheduled" if not Selected/Rejected
         application = db.query(CandidateApplication).filter(
@@ -183,12 +197,13 @@ def schedule_interview_task(schedule_id, candidate_id):
 
         # Candidate Email
         candidate_subject = f"Interview Scheduled - {panel_type} Round"
+        meet_link_info = f"Google Meet Link: {meet_link}\n\n" if meet_link else ""
         candidate_body = (
             f"Hi {candidate.full_name},\n\n"
             f"Your {panel_type} interview has been scheduled.\n"
             f"Date: {schedule.date}\n"
             f"Time: 11:00 AM - 12:00 PM IST\n"
-            f"Google Meet Link: {meet_link}\n\n"
+            f"{meet_link_info}"
             f"Best regards,\n"
             f"Recruitment Team"
         )
@@ -213,7 +228,7 @@ def schedule_interview_task(schedule_id, candidate_id):
                 f"Round: {panel_type}\n"
                 f"Date: {schedule.date}\n"
                 f"Time: 11:00 AM - 12:00 PM IST\n"
-                f"Google Meet Link: {meet_link}\n\n"
+                f"{meet_link_info}"
                 f"Best regards,\n"
                 f"Recruitment Team"
             )
@@ -251,26 +266,50 @@ def schedule_interview_task(schedule_id, candidate_id):
                 panel = db.query(Panel).first()
                 
             if panel:
-                email_body_candidate = (
-                    f"Dear {candidate.full_name},\n\n"
-                    f"Your interview for the {job_role_title} role with Panelist {panel.hr_panelists_name} "
-                    f"has been scheduled successfully.\n\n"
-                    f"Date: {schedule.date}\n"
-                    f"Time: {schedule.start_time.strftime('%I:%M %p')} - {schedule.end_time.strftime('%I:%M %p')} IST\n"
-                    f"Google Meet Link: {meet_link}\n\n"
-                    f"Best Regards,\n"
-                    f"Recruitment Team"
-                )
-                email_body_panelist = (
-                    f"Dear {panel.hr_panelists_name},\n\n"
-                    f"You have been assigned to interview candidate {candidate.full_name} for the {job_role_title} role.\n\n"
-                    f"Date: {schedule.date}\n"
-                    f"Time: {schedule.start_time.strftime('%I:%M %p')} - {schedule.end_time.strftime('%I:%M %p')} IST\n"
-                    f"Google Meet Link: {meet_link}\n\n"
-                    f"Please join on time.\n\n"
-                    f"Best Regards,\n"
-                    f"Recruitment Team"
-                )
+                if is_offline:
+                    location_info = f"Venue: {venue or 'TBD'}"
+                    email_body_candidate = (
+                        f"Dear {candidate.full_name},\n\n"
+                        f"Your interview for the {job_role_title} role with Panelist {panel.hr_panelists_name} "
+                        f"has been scheduled successfully.\n\n"
+                        f"Date: {schedule.date}\n"
+                        f"Time: {schedule.start_time.strftime('%I:%M %p')} - {schedule.end_time.strftime('%I:%M %p')} IST\n"
+                        f"{location_info}\n\n"
+                        f"Best Regards,\n"
+                        f"Recruitment Team"
+                    )
+                    email_body_panelist = (
+                        f"Dear {panel.hr_panelists_name},\n\n"
+                        f"You have been assigned to interview candidate {candidate.full_name} for the {job_role_title} role.\n\n"
+                        f"Date: {schedule.date}\n"
+                        f"Time: {schedule.start_time.strftime('%I:%M %p')} - {schedule.end_time.strftime('%I:%M %p')} IST\n"
+                        f"{location_info}\n\n"
+                        f"Please be present at the venue.\n\n"
+                        f"Best Regards,\n"
+                        f"Recruitment Team"
+                    )
+                else:
+                    meet_link_info = f"Google Meet Link: {meet_link}\n\n" if meet_link else ""
+                    email_body_candidate = (
+                        f"Dear {candidate.full_name},\n\n"
+                        f"Your interview for the {job_role_title} role with Panelist {panel.hr_panelists_name} "
+                        f"has been scheduled successfully.\n\n"
+                        f"Date: {schedule.date}\n"
+                        f"Time: {schedule.start_time.strftime('%I:%M %p')} - {schedule.end_time.strftime('%I:%M %p')} IST\n"
+                        f"{meet_link_info}"
+                        f"Best Regards,\n"
+                        f"Recruitment Team"
+                    )
+                    email_body_panelist = (
+                        f"Dear {panel.hr_panelists_name},\n\n"
+                        f"You have been assigned to interview candidate {candidate.full_name} for the {job_role_title} role.\n\n"
+                        f"Date: {schedule.date}\n"
+                        f"Time: {schedule.start_time.strftime('%I:%M %p')} - {schedule.end_time.strftime('%I:%M %p')} IST\n"
+                        f"{meet_link_info}"
+                        f"Please join on time.\n\n"
+                        f"Best Regards,\n"
+                        f"Recruitment Team"
+                    )
                 
                 # Send candidate email
                 try:
